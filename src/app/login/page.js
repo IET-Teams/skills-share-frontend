@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { EyeIcon, EyedropperIcon } from "@phosphor-icons/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/lib/supabase/client";
+import { signInWithGoogle } from "@/app/action";
 
 const features = [
   "Teach skills you know to earn campus reputation",
@@ -40,22 +41,16 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [googleLoginActionState, googleLoginAction] =
+    useActionState(signInWithGoogle);
 
   // ── Google OAuth ──
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     setError("");
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        flowType: "pkce",
-        queryParams: {
-          access_type: "offline",
-          prompt: "consent",
-        },
-      },
-    });
+    // signInWithGoogle()
     if (error) {
       setError(error.message);
       setGoogleLoading(false);
@@ -195,7 +190,7 @@ export default function LoginPage() {
                 }}
                 className={`flex-1 py-2 text-sm rounded-lg transition-all duration-200 ${
                   tab === t
-                    ? "bg-[#1e1a14] text-amber-400 border border-[#3a2e1a]"
+                    ? "bg-[#1e1a14] text-amber-400 "
                     : "text-[#6a6050] hover:text-[#a09880]"
                 }`}
               >
@@ -236,11 +231,17 @@ export default function LoginPage() {
                 </p>
 
                 {/* Google Button */}
-                <GoogleButton
-                  loading={googleLoading}
-                  onClick={handleGoogleLogin}
-                  label="Continue with Google"
-                />
+                <form action={googleLoginAction}>
+                  <input
+                    type="hidden"
+                    name="next"
+                    value={searchParams.next || "/dashboard"}
+                  />
+                  <GoogleButton
+                    state={googleLoginActionState}
+                    label="Sign up with Google"
+                  />
+                </form>
 
                 <Divider />
 
@@ -311,11 +312,17 @@ export default function LoginPage() {
                   {`Join SkillBridge — it's free`}
                 </p>
 
-                <GoogleButton
-                  loading={googleLoading}
-                  onClick={handleGoogleLogin}
-                  label="Sign up with Google"
-                />
+                <form action={googleLoginAction}>
+                  <input
+                    type="hidden"
+                    name="next"
+                    value={searchParams.next || "/dashboard"}
+                  />
+                  <GoogleButton
+                    state={googleLoginActionState}
+                    label="Sign up with Google"
+                  />
+                </form>
 
                 <Divider />
 
@@ -378,15 +385,15 @@ export default function LoginPage() {
 
 // ── Reusable sub-components ──
 
-function GoogleButton({ loading, onClick, label }) {
+function GoogleButton({ state, label }) {
   return (
     <motion.button
-      onClick={onClick}
-      disabled={loading}
+      type="submit"
+      disabled={state?.error}
       whileTap={{ scale: 0.98 }}
       className="w-full flex items-center justify-center gap-2.5 bg-[#f5f0e8] hover:bg-white text-[#1a1610] font-medium text-sm py-3 rounded-xl transition-colors mb-5 disabled:opacity-60"
     >
-      {loading ? (
+      {state?.error ? (
         <svg
           className="animate-spin w-4 h-4 text-[#1a1610]"
           fill="none"
@@ -426,7 +433,7 @@ function GoogleButton({ loading, onClick, label }) {
           />
         </svg>
       )}
-      {loading ? "Redirecting..." : label}
+      {state?.error ? "Redirecting..." : label}
     </motion.button>
   );
 }
