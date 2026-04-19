@@ -615,15 +615,15 @@ function EmptyExplore({ type, query, onClear }) {
         {query
           ? `No results for "${query}"`
           : isSkills
-          ? "No skills found"
-          : "No students found"}
+            ? "No skills found"
+            : "No students found"}
       </p>
       <p className="mt-1 text-xs" style={{ color: "#2a2520" }}>
         {query
           ? "Try a different search or clear the filters"
           : isSkills
-          ? "Be the first to add this skill"
-          : "Try a different department filter"}
+            ? "Be the first to add this skill"
+            : "Try a different department filter"}
       </p>
 
       <div className="mt-5 flex gap-2">
@@ -643,7 +643,7 @@ function EmptyExplore({ type, query, onClear }) {
         )}
         {isSkills && (
           <motion.a
-            href="/main/profile?tab=skills"
+            href="/profile?tab=skills"
             whileTap={{ scale: 0.97 }}
             className="rounded-xl px-4 py-2 text-xs font-medium"
             style={{ border: "1px solid #2a2520", color: "#6a6050" }}

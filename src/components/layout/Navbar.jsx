@@ -23,21 +23,28 @@ import {
 
 // ─── Nav items ────────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  { href: "/main/dashboard",   icon: LayoutDashboard, label: "Dashboard"   },
-  { href: "/main/profile",     icon: User,            label: "Profile"     },
-  { href: "/main/explore",     icon: Compass,         label: "Explore"     },
-  { href: "/main/sessions",    icon: CalendarCheck,   label: "Sessions"    },
-  { href: "/main/internships", icon: Briefcase,       label: "Internships" },
-  { href: "/main/chat",        icon: MessageCircle,   label: "Chat"        },
+  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/profile", icon: User, label: "Profile" },
+  { href: "/explore", icon: Compass, label: "Explore" },
+  { href: "/sessions", icon: CalendarCheck, label: "Sessions" },
+  { href: "/internships", icon: Briefcase, label: "Internships" },
+  { href: "/chat", icon: MessageCircle, label: "Chat" },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getInitials(name = "") {
-  return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "SB";
+  return (
+    name
+      .split(" ")
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "SB"
+  );
 }
 
 function isActive(pathname, href) {
-  if (href === "/main/dashboard") return pathname === "/main/dashboard";
+  if (href === "/dashboard") return pathname === "/dashboard";
   return pathname.startsWith(href);
 }
 
@@ -74,12 +81,13 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
         className="flex h-14 items-center px-4"
         style={{ borderBottom: "1px solid #1a1814" }}
       >
-        <Link href="/main/dashboard" className="flex items-center gap-2.5 min-w-0">
+        <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0">
           {/* Logo mark */}
           <div
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
             style={{
-              background: "linear-gradient(135deg, rgba(232,184,75,0.25) 0%, rgba(232,184,75,0.08) 100%)",
+              background:
+                "linear-gradient(135deg, rgba(232,184,75,0.25) 0%, rgba(232,184,75,0.08) 100%)",
               border: "1px solid rgba(232,184,75,0.2)",
             }}
           >
@@ -109,7 +117,10 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
           className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-colors"
           style={{ color: "#3a342c" }}
         >
-          <motion.div animate={{ rotate: collapsed ? 0 : 180 }} transition={{ duration: 0.25 }}>
+          <motion.div
+            animate={{ rotate: collapsed ? 0 : 180 }}
+            transition={{ duration: 0.25 }}
+          >
             <ChevronRight size={13} />
           </motion.div>
         </motion.button>
@@ -131,7 +142,8 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
                   color: active ? "#e8b84b" : "#6a6050",
                 }}
                 onMouseEnter={(e) => {
-                  if (!active) e.currentTarget.style.background = "rgba(255,255,255,0.03)";
+                  if (!active)
+                    e.currentTarget.style.background = "rgba(255,255,255,0.03)";
                   if (!active) e.currentTarget.style.color = "#c8bfb0";
                 }}
                 onMouseLeave={(e) => {
@@ -154,7 +166,12 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
                   {isChatWithBadge && (
                     <span
                       className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full text-xs"
-                      style={{ background: "#e8b84b", color: "#0e0c0a", fontSize: 8, fontWeight: 600 }}
+                      style={{
+                        background: "#e8b84b",
+                        color: "#0e0c0a",
+                        fontSize: 8,
+                        fontWeight: 600,
+                      }}
                     >
                       {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
@@ -179,7 +196,11 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
                 {collapsed && (
                   <div
                     className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100"
-                    style={{ background: "#1a1814", color: "#f5f0e8", border: "1px solid #2a2520" }}
+                    style={{
+                      background: "#1a1814",
+                      color: "#f5f0e8",
+                      border: "1px solid #2a2520",
+                    }}
                   >
                     {label}
                   </div>
@@ -200,8 +221,14 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
           onClick={() => setUserMenuOpen((o) => !o)}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 transition-all"
           style={{ color: "#6a6050" }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.color = "#c8bfb0"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#6a6050"; }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(255,255,255,0.03)";
+            e.currentTarget.style.color = "#c8bfb0";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = "#6a6050";
+          }}
         >
           {/* Avatar */}
           {profile?.avatar_url ? (
@@ -228,7 +255,10 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
                 transition={{ duration: 0.15 }}
                 className="min-w-0 flex-1 text-left"
               >
-                <p className="truncate text-xs font-medium" style={{ color: "#c8bfb0" }}>
+                <p
+                  className="truncate text-xs font-medium"
+                  style={{ color: "#c8bfb0" }}
+                >
                   {profile?.name || "Student"}
                 </p>
                 <p className="truncate text-xs" style={{ color: "#4a4438" }}>
@@ -251,30 +281,65 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
               style={{ background: "#141210", borderColor: "#2a2520" }}
             >
               {/* Profile header */}
-              <div className="flex items-center gap-2.5 px-3 py-2.5" style={{ borderBottom: "1px solid #1a1814" }}>
+              <div
+                className="flex items-center gap-2.5 px-3 py-2.5"
+                style={{ borderBottom: "1px solid #1a1814" }}
+              >
                 {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" className="h-8 w-8 rounded-lg object-cover" />
+                  <img
+                    src={profile.avatar_url}
+                    alt=""
+                    className="h-8 w-8 rounded-lg object-cover"
+                  />
                 ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-medium" style={{ background: "rgba(232,184,75,0.12)", color: "#e8b84b" }}>
+                  <div
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-medium"
+                    style={{
+                      background: "rgba(232,184,75,0.12)",
+                      color: "#e8b84b",
+                    }}
+                  >
                     {initials}
                   </div>
                 )}
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-medium" style={{ color: "#f5f0e8" }}>{profile?.name || "Student"}</p>
-                  <p className="truncate text-xs" style={{ color: "#4a4438" }}>{profile?.department || ""}</p>
+                  <p
+                    className="truncate text-xs font-medium"
+                    style={{ color: "#f5f0e8" }}
+                  >
+                    {profile?.name || "Student"}
+                  </p>
+                  <p className="truncate text-xs" style={{ color: "#4a4438" }}>
+                    {profile?.department || ""}
+                  </p>
                 </div>
               </div>
 
               {[
-                { href: "/main/profile", icon: User, label: "View profile" },
-                { href: "/main/profile?tab=settings", icon: Settings, label: "Settings" },
+                { href: "/profile", icon: User, label: "View profile" },
+                {
+                  href: "/profile?tab=settings",
+                  icon: Settings,
+                  label: "Settings",
+                },
               ].map(({ href, icon: Icon, label }) => (
-                <Link key={href} href={href} onClick={() => setUserMenuOpen(false)}>
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setUserMenuOpen(false)}
+                >
                   <div
                     className="flex items-center gap-2.5 px-3 py-2.5 text-xs transition-colors"
                     style={{ color: "#8a8070" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.color = "#c8bfb0"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#8a8070"; }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background =
+                        "rgba(255,255,255,0.03)";
+                      e.currentTarget.style.color = "#c8bfb0";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "transparent";
+                      e.currentTarget.style.color = "#8a8070";
+                    }}
                   >
                     <Icon size={13} />
                     {label}
@@ -282,13 +347,22 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
                 </Link>
               ))}
 
-              <div style={{ borderTop: "1px solid #1a1814" }} className="mt-1 pt-1">
+              <div
+                style={{ borderTop: "1px solid #1a1814" }}
+                className="mt-1 pt-1"
+              >
                 <button
                   onClick={onLogout}
                   className="flex w-full items-center gap-2.5 px-3 py-2.5 text-xs transition-colors"
                   style={{ color: "#8a8070" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "#b05252"; e.currentTarget.style.background = "rgba(176,82,82,0.06)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "#8a8070"; e.currentTarget.style.background = "transparent"; }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "#b05252";
+                    e.currentTarget.style.background = "rgba(176,82,82,0.06)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "#8a8070";
+                    e.currentTarget.style.background = "transparent";
+                  }}
                 >
                   <LogOut size={13} />
                   Sign out
@@ -322,7 +396,11 @@ function MobileBottomNav({ pathname, unreadCount }) {
         const isChatWithBadge = href === "/chat" && unreadCount > 0;
 
         return (
-          <Link key={href} href={href} className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1">
+          <Link
+            key={href}
+            href={href}
+            className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1"
+          >
             <motion.div
               whileTap={{ scale: 0.88 }}
               className="relative flex flex-col items-center gap-0.5"
@@ -340,7 +418,12 @@ function MobileBottomNav({ pathname, unreadCount }) {
                 {isChatWithBadge && (
                   <span
                     className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full"
-                    style={{ background: "#e8b84b", color: "#0e0c0a", fontSize: 8, fontWeight: 600 }}
+                    style={{
+                      background: "#e8b84b",
+                      color: "#0e0c0a",
+                      fontSize: 8,
+                      fontWeight: 600,
+                    }}
                   >
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
@@ -386,7 +469,7 @@ function MobileTopBar({ profile, pathname, onLogout, unreadCount }) {
         }}
       >
         {/* Logo */}
-        <Link href="/main/dashboard" className="flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2">
           <div
             className="flex h-7 w-7 items-center justify-center rounded-lg"
             style={{
@@ -421,9 +504,16 @@ function MobileTopBar({ profile, pathname, onLogout, unreadCount }) {
             style={{ background: "rgba(232,184,75,0.08)" }}
           >
             {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt="" className="h-8 w-8 rounded-lg object-cover" />
+              <img
+                src={profile.avatar_url}
+                alt=""
+                className="h-8 w-8 rounded-lg object-cover"
+              />
             ) : (
-              <span className="text-xs font-medium" style={{ color: "#e8b84b" }}>
+              <span
+                className="text-xs font-medium"
+                style={{ color: "#e8b84b" }}
+              >
                 {initials}
               </span>
             )}
@@ -441,7 +531,10 @@ function MobileTopBar({ profile, pathname, onLogout, unreadCount }) {
               exit={{ opacity: 0 }}
               onClick={() => setMenuOpen(false)}
               className="fixed inset-0 z-50"
-              style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+              style={{
+                background: "rgba(0,0,0,0.6)",
+                backdropFilter: "blur(4px)",
+              }}
             />
             <motion.div
               initial={{ x: "100%" }}
@@ -452,18 +545,38 @@ function MobileTopBar({ profile, pathname, onLogout, unreadCount }) {
               style={{ background: "#0a0908", borderLeft: "1px solid #1e1c18" }}
             >
               {/* Drawer header */}
-              <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid #1a1814" }}>
+              <div
+                className="flex items-center justify-between px-5 py-4"
+                style={{ borderBottom: "1px solid #1a1814" }}
+              >
                 <div className="flex items-center gap-3">
                   {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt="" className="h-9 w-9 rounded-xl object-cover" />
+                    <img
+                      src={profile.avatar_url}
+                      alt=""
+                      className="h-9 w-9 rounded-xl object-cover"
+                    />
                   ) : (
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-medium" style={{ background: "rgba(232,184,75,0.12)", color: "#e8b84b" }}>
+                    <div
+                      className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-medium"
+                      style={{
+                        background: "rgba(232,184,75,0.12)",
+                        color: "#e8b84b",
+                      }}
+                    >
                       {initials}
                     </div>
                   )}
                   <div>
-                    <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>{profile?.name || "Student"}</p>
-                    <p className="text-xs" style={{ color: "#4a4438" }}>{profile?.department?.split("·")[0]?.trim() || "Campus"}</p>
+                    <p
+                      className="text-sm font-medium"
+                      style={{ color: "#f5f0e8" }}
+                    >
+                      {profile?.name || "Student"}
+                    </p>
+                    <p className="text-xs" style={{ color: "#4a4438" }}>
+                      {profile?.department?.split("·")[0]?.trim() || "Campus"}
+                    </p>
                   </div>
                 </div>
                 <motion.button
@@ -481,20 +594,31 @@ function MobileTopBar({ profile, pathname, onLogout, unreadCount }) {
                 {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
                   const active = isActive(pathname, href);
                   return (
-                    <Link key={href} href={href} onClick={() => setMenuOpen(false)}>
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setMenuOpen(false)}
+                    >
                       <motion.div
                         whileTap={{ scale: 0.97 }}
                         className="flex items-center gap-3 rounded-xl px-4 py-3 transition-all"
                         style={{
-                          background: active ? "rgba(232,184,75,0.08)" : "transparent",
+                          background: active
+                            ? "rgba(232,184,75,0.08)"
+                            : "transparent",
                           color: active ? "#e8b84b" : "#8a8070",
-                          borderLeft: active ? "2px solid #e8b84b" : "2px solid transparent",
+                          borderLeft: active
+                            ? "2px solid #e8b84b"
+                            : "2px solid transparent",
                         }}
                       >
                         <Icon size={16} />
                         <span className="text-sm">{label}</span>
                         {href === "/chat" && unreadCount > 0 && (
-                          <span className="ml-auto rounded-full px-1.5 py-0.5 text-xs font-medium" style={{ background: "#e8b84b", color: "#0e0c0a" }}>
+                          <span
+                            className="ml-auto rounded-full px-1.5 py-0.5 text-xs font-medium"
+                            style={{ background: "#e8b84b", color: "#0e0c0a" }}
+                          >
                             {unreadCount}
                           </span>
                         )}
@@ -505,9 +629,15 @@ function MobileTopBar({ profile, pathname, onLogout, unreadCount }) {
               </div>
 
               {/* Bottom actions */}
-              <div className="border-t px-3 py-3 space-y-0.5" style={{ borderColor: "#1a1814" }}>
-                <Link href="/main/profile" onClick={() => setMenuOpen(false)}>
-                  <div className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition-colors" style={{ color: "#6a6050" }}>
+              <div
+                className="border-t px-3 py-3 space-y-0.5"
+                style={{ borderColor: "#1a1814" }}
+              >
+                <Link href="/profile" onClick={() => setMenuOpen(false)}>
+                  <div
+                    className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition-colors"
+                    style={{ color: "#6a6050" }}
+                  >
                     <Settings size={15} />
                     Settings
                   </div>
@@ -516,8 +646,12 @@ function MobileTopBar({ profile, pathname, onLogout, unreadCount }) {
                   onClick={onLogout}
                   className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm transition-colors"
                   style={{ color: "#6a6050" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "#b05252"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "#6a6050"; }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "#b05252";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "#6a6050";
+                  }}
                 >
                   <LogOut size={15} />
                   Sign out
@@ -532,7 +666,7 @@ function MobileTopBar({ profile, pathname, onLogout, unreadCount }) {
 }
 
 // ─── Main Navbar export ───────────────────────────────────────────────────────
-export default function Navbar({ children }) {
+export default function Navbar({ CURRENT_USER, children }) {
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -553,26 +687,30 @@ export default function Navbar({ children }) {
   }, []);
 
   // ── Fetch profile ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    async function loadProfile() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  // useEffect(() => {
+  //   async function loadProfile() {
+  //     const {
+  //       data: { user },
+  //     } = await supabase.auth.getUser();
+  //     if (!user) return;
 
-      const { data } = await supabase
-        .from("users")
-        .select("id, name, department, avatar_url")
-        .eq("id", user.id)
-        .single();
+  //     const { data } = await supabase
+  //       .from("users")
+  //       .select("id, name, department, avatar_url")
+  //       .eq("id", user.id)
+  //       .single();
 
-      setProfile(data);
-    }
-    loadProfile();
-  }, [supabase]);
+  //     setProfile(data);
+  //   }
+  //   loadProfile();
+  // }, [supabase]);
 
   // ── Unread messages count (realtime) ──────────────────────────────────────
   useEffect(() => {
     async function loadUnread() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       const { count } = await supabase
@@ -588,8 +726,13 @@ export default function Navbar({ children }) {
         .channel("unread-messages")
         .on(
           "postgres_changes",
-          { event: "INSERT", schema: "public", table: "messages", filter: `receiver_id=eq.${user.id}` },
-          () => setUnreadCount((c) => c + 1)
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "messages",
+            filter: `receiver_id=eq.${user.id}`,
+          },
+          () => setUnreadCount((c) => c + 1),
         )
         .subscribe();
 
@@ -605,8 +748,10 @@ export default function Navbar({ children }) {
   };
 
   // Don't render on auth pages
-  const isAuthPage = pathname?.startsWith("/login") || (!pathname?.startsWith("/main") && pathname !== "/");
-  if (isAuthPage) return <>{children}</>;
+  const shouldRender = pathname !== "/" && pathname !== "/login";
+  // const isAuthPage = pathname?.startsWith("/login") || (!pathname?.startsWith("/main") && pathname !== "/");
+
+  if (!shouldRender || !CURRENT_USER) return <>{children}</>;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -619,9 +764,7 @@ export default function Navbar({ children }) {
             onLogout={handleLogout}
             unreadCount={unreadCount}
           />
-          <main className="pb-16 pt-14">
-            {children}
-          </main>
+          <main className="pb-16 pt-14">{children}</main>
           <MobileBottomNav pathname={pathname} unreadCount={unreadCount} />
         </>
       ) : (

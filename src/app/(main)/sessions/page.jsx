@@ -629,7 +629,10 @@ export default function SessionsPage() {
   ];
 
   return (
-    <div className="min-h-screen px-4 py-8 md:px-8 lg:px-12" style={{ background: "#0e0c0a" }}>
+    <div
+      className="min-h-screen px-4 py-8 md:px-8 lg:px-12"
+      style={{ background: "#0e0c0a" }}
+    >
       <div className="mx-auto max-w-4xl">
         {/* ── Header ─────────────────────────────────────────────────── */}
         <motion.div
@@ -638,15 +641,20 @@ export default function SessionsPage() {
           variants={staggerContainer}
           className="mb-6"
         >
-          <motion.div variants={fadeUp} className="flex items-center justify-between">
+          <motion.div
+            variants={fadeUp}
+            className="flex items-center justify-between"
+          >
             <div>
-              <h1 className="text-2xl font-medium" style={{ color: "#f5f0e8" }}>Sessions</h1>
+              <h1 className="text-2xl font-medium" style={{ color: "#f5f0e8" }}>
+                Sessions
+              </h1>
               <p className="mt-1 text-sm" style={{ color: "#6a6050" }}>
                 Manage your skill-sharing sessions
               </p>
             </div>
             <motion.a
-              href="/main/explore"
+              href="/explore"
               whileTap={{ scale: 0.97 }}
               className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all"
               style={{ background: "#e8b84b", color: "#0e0c0a" }}
@@ -664,9 +672,25 @@ export default function SessionsPage() {
           variants={staggerContainer}
           className="mb-6 grid grid-cols-3 gap-3"
         >
-          <StatCard icon={Calendar} label="Total sessions" value={stats.total} index={0} />
-          <StatCard icon={Clock} label="Pending" value={stats.pending} accent={stats.pending > 0 ? "Action needed" : null} index={1} />
-          <StatCard icon={CheckCircle2} label="Completed" value={stats.completed} index={2} />
+          <StatCard
+            icon={Calendar}
+            label="Total sessions"
+            value={stats.total}
+            index={0}
+          />
+          <StatCard
+            icon={Clock}
+            label="Pending"
+            value={stats.pending}
+            accent={stats.pending > 0 ? "Action needed" : null}
+            index={1}
+          />
+          <StatCard
+            icon={CheckCircle2}
+            label="Completed"
+            value={stats.completed}
+            index={2}
+          />
         </motion.div>
 
         {/* ── Tab Switcher ────────────────────────────────────────────── */}
@@ -695,7 +719,10 @@ export default function SessionsPage() {
                 <span
                   className="relative z-10 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs"
                   style={{
-                    background: activeTab === tab.id ? "rgba(14,12,10,0.2)" : "rgba(232,184,75,0.1)",
+                    background:
+                      activeTab === tab.id
+                        ? "rgba(14,12,10,0.2)"
+                        : "rgba(232,184,75,0.1)",
                     color: activeTab === tab.id ? "#0e0c0a" : "#e8b84b",
                   }}
                 >
@@ -730,7 +757,13 @@ export default function SessionsPage() {
                   <SessionCard
                     key={session.id}
                     session={session}
-                    type={activeTab === "incoming" || (activeTab === "completed" && session.provider_id === currentUser?.id) ? "incoming" : "outgoing"}
+                    type={
+                      activeTab === "incoming" ||
+                      (activeTab === "completed" &&
+                        session.provider_id === currentUser?.id)
+                        ? "incoming"
+                        : "outgoing"
+                    }
                     index={i}
                     currentUserId={currentUser?.id}
                     onAccept={handleAccept}

@@ -532,7 +532,7 @@ export default function DashboardPage() {
               />
             </motion.button>
             <motion.a
-              href="/main/explore"
+              href="/explore"
               whileTap={{ scale: 0.97 }}
               className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all"
               style={{
@@ -653,7 +653,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <a
-                  href="/main/sessions"
+                  href="/sessions"
                   className="flex items-center gap-1 text-xs transition-colors"
                   style={{ color: "#6a6050" }}
                 >
@@ -723,7 +723,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <a
-                  href="/main/explore"
+                  href="/explore"
                   className="flex items-center gap-1 text-xs"
                   style={{ color: "#6a6050" }}
                 >
@@ -762,14 +762,14 @@ export default function DashboardPage() {
               </p>
               <div className="space-y-2">
                 {[
-                  { icon: BookOpen, label: "Add a skill", href: "/main/profile" },
-                  { icon: Users, label: "Find learners", href: "/main/explore" },
+                  { icon: BookOpen, label: "Add a skill", href: "/profile" },
+                  { icon: Users, label: "Find learners", href: "/explore" },
                   {
                     icon: Briefcase,
                     label: "Browse internships",
-                    href: "/main/internships",
+                    href: "/internships",
                   },
-                  { icon: Clock, label: "Schedule session", href: "/main/sessions" },
+                  { icon: Clock, label: "Schedule session", href: "/sessions" },
                 ].map((action, i) => (
                   <motion.a
                     key={action.label}
@@ -856,7 +856,7 @@ export default function DashboardPage() {
                 Companies are actively hiring from your campus
               </p>
               <a
-                href="/main/internships"
+                href="/internships"
                 className="mt-4 flex items-center gap-1 text-xs font-medium"
                 style={{ color: "#e8b84b" }}
               >
