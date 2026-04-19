@@ -50,6 +50,13 @@ export async function proxy(request) {
 // Ensure the proxy runs for relevant paths
 export const config = {
   matcher: [
+    "/dashboard/:path*",
+    "/profile/:path*",
+    "/explore/:path*",
+    "/sessions/:path*",
+    "/internships/:path*",
+    "/chat/:path*",
+    "/login",
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
