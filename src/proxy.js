@@ -10,6 +10,14 @@ export async function proxy(req) {
     {
       cookies: {
         get: (name) => req.cookies.get(name)?.value,
+        set: (name, value, options) => {
+          req.cookies.set({ name, value, ...options });
+          res.cookies.set({ name, value, ...options });
+        },
+        remove: (name, options) => {
+          req.cookies.set({ name, value: "", ...options });
+          res.cookies.set({ name, value: "", ...options });
+        },
       },
     },
   );
@@ -18,14 +26,24 @@ export async function proxy(req) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // protect dashboard
-  if (!user && req.nextUrl.pathname.startsWith("/dashboard")) {
-    return NextResponse.redirect(new URL("/login", req.url));
+  const { pathname } = req.nextUrl;
+
+  // Redirect logged-in users away from login page
+  if (user && pathname.startsWith("/login")) {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
   return res;
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: [
+    "/dashboard/:path*",
+    "/profile/:path*",
+    "/explore/:path*",
+    "/sessions/:path*",
+    "/internships/:path*",
+    "/chat/:path*",
+    "/login",
+  ],
 };
