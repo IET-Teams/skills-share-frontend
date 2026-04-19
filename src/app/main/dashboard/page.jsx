@@ -83,7 +83,7 @@ function StatCard({ icon: Icon, label, value, sub, accent, index }) {
       <div
         className="pointer-events-none absolute -bottom-6 -right-6 h-20 w-20 rounded-full opacity-20"
         style={{
-          background: "radial-gradient(circle, #e8b84b 0%, transparent 70%)",
+          background: "radial-gradient(circle, #e8b84b 0%, transparent 50%)",
         }}
       />
     </motion.div>
@@ -532,7 +532,7 @@ export default function DashboardPage() {
               />
             </motion.button>
             <motion.a
-              href="/explore"
+              href="/main/explore"
               whileTap={{ scale: 0.97 }}
               className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all"
               style={{
@@ -653,7 +653,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <a
-                  href="/sessions"
+                  href="/main/sessions"
                   className="flex items-center gap-1 text-xs transition-colors"
                   style={{ color: "#6a6050" }}
                 >
@@ -723,7 +723,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <a
-                  href="/explore"
+                  href="/main/explore"
                   className="flex items-center gap-1 text-xs"
                   style={{ color: "#6a6050" }}
                 >
@@ -762,14 +762,14 @@ export default function DashboardPage() {
               </p>
               <div className="space-y-2">
                 {[
-                  { icon: BookOpen, label: "Add a skill", href: "/profile" },
-                  { icon: Users, label: "Find learners", href: "/explore" },
+                  { icon: BookOpen, label: "Add a skill", href: "/main/profile" },
+                  { icon: Users, label: "Find learners", href: "/main/explore" },
                   {
                     icon: Briefcase,
                     label: "Browse internships",
-                    href: "/internships",
+                    href: "/main/internships",
                   },
-                  { icon: Clock, label: "Schedule session", href: "/sessions" },
+                  { icon: Clock, label: "Schedule session", href: "/main/sessions" },
                 ].map((action, i) => (
                   <motion.a
                     key={action.label}
@@ -856,7 +856,7 @@ export default function DashboardPage() {
                 Companies are actively hiring from your campus
               </p>
               <a
-                href="/internships"
+                href="/main/internships"
                 className="mt-4 flex items-center gap-1 text-xs font-medium"
                 style={{ color: "#e8b84b" }}
               >

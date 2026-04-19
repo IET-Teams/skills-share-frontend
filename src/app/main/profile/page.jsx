@@ -236,25 +236,9 @@ function ProfileHero({
     >
       {/* Header band */}
       <div
-        className="absolute inset-x-0 top-0 h-28"
+        className="absolute inset-x-0 top-0 h-28 opacity-30"
         style={{
-          background:
-            "linear-gradient(135deg,#1a1610 0%,#141210 50%,#0f0d0b 100%)",
-          borderBottom: "1px solid #1e1c18",
-        }}
-      />
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-28 opacity-20"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle,#3a342c 1px,transparent 1px)",
-          backgroundSize: "20px 20px",
-        }}
-      />
-      <div
-        className="pointer-events-none absolute right-0 top-0 h-36 w-36 opacity-10"
-        style={{
-          background: "radial-gradient(circle,#e8b84b 0%,transparent 70%)",
+          background: "linear-gradient(180deg, #1a1610 0%, #0a0908 100%)",
         }}
       />
 
@@ -457,7 +441,7 @@ function SkillsSection({ skills, userId, onSkillsChange }) {
   const usedNames = skills.map((s) => s.skill_name);
   const suggestions = SKILL_SUGGESTIONS.filter((s) => !usedNames.includes(s));
 
-  const SkillBlock = ({ type, list, accentColor, borderColor, emptyMsg }) => {
+  const renderSkillBlock = ({ type, list, accentColor, borderColor, emptyMsg }) => {
     const isTeach = type === "teach";
     return (
       <div
@@ -571,20 +555,20 @@ function SkillsSection({ skills, userId, onSkillsChange }) {
 
   return (
     <div className="space-y-5">
-      <SkillBlock
-        type="teach"
-        list={teachSkills}
-        accentColor="#e8b84b"
-        borderColor="rgba(232,184,75,0.2)"
-        emptyMsg="No teaching skills yet"
-      />
-      <SkillBlock
-        type="learn"
-        list={learnSkills}
-        accentColor="#1d9e75"
-        borderColor="rgba(29,158,117,0.2)"
-        emptyMsg="No learning goals yet"
-      />
+      {renderSkillBlock({
+        type: "teach",
+        list: teachSkills,
+        accentColor: "#e8b84b",
+        borderColor: "rgba(232,184,75,0.2)",
+        emptyMsg: "No teaching skills yet",
+      })}
+      {renderSkillBlock({
+        type: "learn",
+        list: learnSkills,
+        accentColor: "#1d9e75",
+        borderColor: "rgba(29,158,117,0.2)",
+        emptyMsg: "No learning goals yet",
+      })}
 
       {suggestions.length > 0 && (
         <div
@@ -597,9 +581,10 @@ function SkillsSection({ skills, userId, onSkillsChange }) {
           <div className="flex flex-wrap gap-2">
             {suggestions.slice(0, 10).map((s) => (
               <div key={s} className="flex items-center gap-1">
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => addFromSuggestion(s, "teach")}
-                  className="rounded-lg px-2.5 py-1 text-xs"
+                  className="rounded-lg px-2.5 py-1 text-xs hover:border-[#4a4438] transition-colors"
                   style={{
                     background: "#141210",
                     color: "#6a6050",
@@ -608,10 +593,11 @@ function SkillsSection({ skills, userId, onSkillsChange }) {
                   title="Add as teach"
                 >
                   {s} <span style={{ color: "#e8b84b" }}>↑</span>
-                </button>
-                <button
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => addFromSuggestion(s, "learn")}
-                  className="rounded-lg px-2 py-1 text-xs"
+                  className="rounded-lg px-2 py-1 text-xs hover:border-[#4a4438] transition-colors"
                   style={{
                     background: "#141210",
                     color: "#6a6050",
@@ -620,7 +606,7 @@ function SkillsSection({ skills, userId, onSkillsChange }) {
                   title="Add as learn"
                 >
                   <span style={{ color: "#1d9e75" }}>↓</span>
-                </button>
+                </motion.button>
               </div>
             ))}
           </div>
@@ -973,7 +959,7 @@ function ProfileEditModal({ profile, onSave, onClose }) {
     department: profile?.department || "",
     bio: profile?.bio || "",
     location: profile?.location || "",
-    avatar_url: profile?.avatar_url || "",
+    location: profile?.location || "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -1059,13 +1045,6 @@ function ProfileEditModal({ profile, onSave, onClose }) {
               icon: MapPin,
               label: "Location",
               placeholder: "e.g. Kozhikode, Kerala",
-              type: "input",
-            },
-            {
-              key: "avatar_url",
-              icon: null,
-              label: "Avatar URL",
-              placeholder: "https://…",
               type: "input",
             },
           ].map(({ key, icon, label, placeholder }) => (

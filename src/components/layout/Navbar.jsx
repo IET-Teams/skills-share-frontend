@@ -605,7 +605,7 @@ export default function Navbar({ children }) {
   };
 
   // Don't render on auth pages
-  const isAuthPage = pathname?.startsWith("/login") || pathname === "/" || !pathname?.startsWith("/main");
+  const isAuthPage = pathname?.startsWith("/login") || (!pathname?.startsWith("/main") && pathname !== "/");
   if (isAuthPage) return <>{children}</>;
 
   // ── Render ─────────────────────────────────────────────────────────────────
