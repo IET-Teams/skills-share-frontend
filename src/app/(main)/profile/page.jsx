@@ -214,7 +214,10 @@ function ProfileHero({
   sessionCount,
   avgRating,
   onEdit,
+  isOwnProfile,
 }) {
+  const [copied, setCopied] = useState(false);
+
   const name = profile?.name || user?.email?.split("@")[0] || "Student";
   const initials = name
     .split(" ")
@@ -247,26 +250,35 @@ function ProfileHero({
         <div className="absolute right-5 top-5 flex gap-2">
           <motion.button
             whileTap={{ scale: 0.97 }}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border"
+            onClick={() => {
+              if (navigator.clipboard) {
+                navigator.clipboard.writeText(`${window.location.origin}/profile?id=${profile?.id}`);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }
+            }}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border transition-colors"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              borderColor: "#2a2520",
+              background: copied ? "rgba(29,158,117,0.1)" : "rgba(255,255,255,0.04)",
+              borderColor: copied ? "rgba(29,158,117,0.2)" : "#2a2520",
             }}
           >
-            <Share2 size={13} style={{ color: "#8a8070" }} />
+            {copied ? <CheckCircle2 size={13} style={{ color: "#1d9e75" }} /> : <Share2 size={13} style={{ color: "#8a8070" }} />}
           </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={onEdit}
-            className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium"
-            style={{
-              background: "rgba(232,184,75,0.08)",
-              borderColor: "rgba(232,184,75,0.2)",
-              color: "#e8b84b",
-            }}
-          >
-            <Edit2 size={11} /> Edit profile
-          </motion.button>
+          {isOwnProfile && (
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={onEdit}
+              className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium"
+              style={{
+                background: "rgba(232,184,75,0.08)",
+                borderColor: "rgba(232,184,75,0.2)",
+                color: "#e8b84b",
+              }}
+            >
+              <Edit2 size={11} /> Edit profile
+            </motion.button>
+          )}
         </div>
 
         {/* Avatar + name */}
@@ -400,7 +412,7 @@ function SkillPill({ skill, type, onRemove }) {
   );
 }
 
-function SkillsSection({ skills, userId, onSkillsChange }) {
+function SkillsSection({ skills, userId, onSkillsChange, isOwnProfile }) {
   const supabase = createSupabaseClient();
   const [adding, setAdding] = useState(null);
   const [input, setInput] = useState("");
@@ -456,7 +468,7 @@ function SkillsSection({ skills, userId, onSkillsChange }) {
               <Sparkles size={14} style={{ color: accentColor }} />
             )}
             <span className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
-              {isTeach ? "Skills I teach" : "Skills I want to learn"}
+              {isTeach ? (isOwnProfile ? "Skills I teach" : "Skills they teach") : (isOwnProfile ? "Skills I want to learn" : "Skills they want to learn")}
             </span>
             <span
               className="rounded-full px-2 py-0.5 text-xs"
@@ -465,18 +477,20 @@ function SkillsSection({ skills, userId, onSkillsChange }) {
               {list.length}
             </span>
           </div>
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={() => setAdding(adding === type ? null : type)}
-            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium"
-            style={{
-              background: adding === type ? `${accentColor}18` : "transparent",
-              color: accentColor,
-              border: `1px solid ${borderColor}`,
-            }}
-          >
-            <Plus size={11} /> Add skill
-          </motion.button>
+          {isOwnProfile && (
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setAdding(adding === type ? null : type)}
+              className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium"
+              style={{
+                background: adding === type ? `${accentColor}18` : "transparent",
+                color: accentColor,
+                border: `1px solid ${borderColor}`,
+              }}
+            >
+              <Plus size={11} /> Add skill
+            </motion.button>
+          )}
         </div>
 
         <AnimatePresence>
@@ -534,7 +548,7 @@ function SkillsSection({ skills, userId, onSkillsChange }) {
                   key={s.id}
                   skill={s}
                   type={type}
-                  onRemove={handleRemove}
+                  onRemove={isOwnProfile ? handleRemove : null}
                 />
               ))
             ) : (
@@ -570,7 +584,7 @@ function SkillsSection({ skills, userId, onSkillsChange }) {
         emptyMsg: "No learning goals yet",
       })}
 
-      {suggestions.length > 0 && (
+      {isOwnProfile && suggestions.length > 0 && (
         <div
           className="rounded-2xl border p-4"
           style={{ background: "#0a0908", borderColor: "#2a2520" }}
@@ -703,7 +717,7 @@ function SessionCard({ session, userId, index }) {
   );
 }
 
-function SessionHistory({ sessions, userId }) {
+function SessionHistory({ sessions, userId, isOwnProfile }) {
   if (!sessions || sessions.length === 0) {
     return (
       <div
@@ -714,21 +728,25 @@ function SessionHistory({ sessions, userId }) {
         <p className="mt-3 text-sm font-medium" style={{ color: "#3a342c" }}>
           No sessions yet
         </p>
-        <p className="mt-1 text-xs" style={{ color: "#2a2520" }}>
-          Explore skills and request your first session
-        </p>
-        <motion.a
-          href="/explore"
-          whileTap={{ scale: 0.97 }}
-          className="mt-4 rounded-xl px-4 py-2 text-xs font-medium"
-          style={{
-            background: "rgba(232,184,75,0.08)",
-            color: "#e8b84b",
-            border: "1px solid rgba(232,184,75,0.15)",
-          }}
-        >
-          Explore skills
-        </motion.a>
+        {isOwnProfile && (
+          <>
+            <p className="mt-1 text-xs" style={{ color: "#2a2520" }}>
+              Explore skills and request your first session
+            </p>
+            <motion.a
+              href="/explore"
+              whileTap={{ scale: 0.97 }}
+              className="mt-4 rounded-xl px-4 py-2 text-xs font-medium"
+              style={{
+                background: "rgba(232,184,75,0.08)",
+                color: "#e8b84b",
+                border: "1px solid rgba(232,184,75,0.15)",
+              }}
+            >
+              Explore skills
+            </motion.a>
+          </>
+        )}
       </div>
     );
   }
@@ -1740,6 +1758,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("skills");
+  const [isOwnProfile, setIsOwnProfile] = useState(true);
 
   useEffect(() => {
     async function fetchAll() {
@@ -1752,30 +1771,33 @@ export default function ProfilePage() {
       }
       setUser(authUser);
 
+      const uid = searchParams.get("id") || authUser.id;
+      setIsOwnProfile(uid === authUser.id);
+
       const [
         { data: profileData },
         { data: skillsData },
         { data: sessionsData },
         { data: ratingsData },
       ] = await Promise.all([
-        supabase.from("users").select("*").eq("id", authUser.id).single(),
+        supabase.from("users").select("*").eq("id", uid).single(),
         supabase
           .from("skills")
           .select("*")
-          .eq("user_id", authUser.id)
+          .eq("user_id", uid)
           .order("created_at", { ascending: false }),
         supabase
           .from("sessions")
           .select(
             "*, requester:requester_id(name,avatar_url), provider:provider_id(name,avatar_url), skill:skill_id(skill_name)",
           )
-          .or(`requester_id.eq.${authUser.id},provider_id.eq.${authUser.id}`)
+          .or(`requester_id.eq.${uid},provider_id.eq.${uid}`)
           .order("created_at", { ascending: false })
           .limit(6),
         supabase
           .from("ratings")
           .select("*, rater:rater_id(name,avatar_url)")
-          .eq("rated_id", authUser.id)
+          .eq("rated_id", uid)
           .order("created_at", { ascending: false }),
       ]);
 
@@ -1863,6 +1885,7 @@ export default function ProfilePage() {
             sessionCount={sessions.length}
             avgRating={avgRating}
             onEdit={() => setEditOpen(true)}
+            isOwnProfile={isOwnProfile}
           />
         </motion.div>
 
@@ -1912,10 +1935,11 @@ export default function ProfilePage() {
                 skills={skills}
                 userId={user?.id}
                 onSkillsChange={setSkills}
+                isOwnProfile={isOwnProfile}
               />
             )}
             {activeTab === "sessions" && (
-              <SessionHistory sessions={sessions} userId={user?.id} />
+              <SessionHistory sessions={sessions} userId={user?.id} isOwnProfile={isOwnProfile} />
             )}
             {activeTab === "ratings" && (
               <RatingsSection ratings={ratings} avgRating={avgRating} />
