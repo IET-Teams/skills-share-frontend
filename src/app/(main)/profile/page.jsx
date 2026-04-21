@@ -399,7 +399,7 @@ function SkillPill({ skill, type, onRemove }) {
         border: `1px solid ${isTeach ? "rgba(232,184,75,0.15)" : "rgba(29,158,117,0.15)"}`,
       }}
     >
-      {skill.skill_name}
+      {skill.name}
       {onRemove && (
         <button
           onClick={() => onRemove(skill.id)}
@@ -418,39 +418,86 @@ function SkillsSection({ skills, userId, onSkillsChange, isOwnProfile }) {
   const [input, setInput] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const teachSkills = skills.filter((s) => s.type === "teach");
-  const learnSkills = skills.filter((s) => s.type === "learn");
+  const teachSkills = skills.filter((s) => s.category === "Teaching");
+  const learnSkills = skills.filter((s) => s.category === "Learning");
 
   const handleAdd = async (type) => {
     const val = input.trim();
     if (!val) return;
     setSaving(true);
-    const { data, error } = await supabase
+    
+    // 1. Ensure skill exists in master list
+    let { data: skillData, error: skillError } = await supabase
       .from("skills")
-      .insert({ user_id: userId, skill_name: val, type })
-      .select()
-      .single();
-    if (!error && data) onSkillsChange((prev) => [data, ...prev]);
+      .select("*")
+      .eq("name", val)
+      .maybeSingle();
+      
+    if (!skillData && !skillError) {
+      const { data: newSkill, error: createError } = await supabase
+        .from("skills")
+        .insert({ name: val, category: type === "teach" ? "Teaching" : "Learning" })
+        .select()
+        .single();
+      skillData = newSkill;
+      skillError = createError;
+    }
+
+    // 2. Link user to skill
+    if (skillData && !skillError) {
+      const { error: linkError } = await supabase
+        .from("user_skills")
+        .upsert({ user_id: userId, skill_id: skillData.id });
+      
+      if (!linkError) {
+        onSkillsChange((prev) => {
+          if (prev.find(s => s.id === skillData.id)) return prev;
+          return [skillData, ...prev];
+        });
+      }
+    }
+    
     setInput("");
     setSaving(false);
   };
 
-  const handleRemove = async (id) => {
-    await supabase.from("skills").delete().eq("id", id);
-    onSkillsChange((prev) => prev.filter((s) => s.id !== id));
+  const handleRemove = async (skillId) => {
+    await supabase
+      .from("user_skills")
+      .delete()
+      .eq("user_id", userId)
+      .eq("skill_id", skillId);
+    onSkillsChange((prev) => prev.filter((s) => s.id !== skillId));
   };
 
   const addFromSuggestion = async (name, type) => {
-    if (skills.find((s) => s.skill_name === name && s.type === type)) return;
-    const { data, error } = await supabase
+    if (skills.find((s) => s.name === name)) return;
+    
+    let { data: skillData } = await supabase
       .from("skills")
-      .insert({ user_id: userId, skill_name: name, type })
-      .select()
-      .single();
-    if (!error && data) onSkillsChange((prev) => [data, ...prev]);
+      .select("*")
+      .eq("name", name)
+      .maybeSingle();
+
+    if (!skillData) {
+      const { data: newSkill } = await supabase
+        .from("skills")
+        .insert({ name, category: type === "teach" ? "Teaching" : "Learning" })
+        .select()
+        .single();
+      skillData = newSkill;
+    }
+
+    if (skillData) {
+      await supabase
+        .from("user_skills")
+        .upsert({ user_id: userId, skill_id: skillData.id });
+      
+      onSkillsChange((prev) => [skillData, ...prev]);
+    }
   };
 
-  const usedNames = skills.map((s) => s.skill_name);
+  const usedNames = skills.map((s) => s.name);
   const suggestions = SKILL_SUGGESTIONS.filter((s) => !usedNames.includes(s));
 
   const renderSkillBlock = ({ type, list, accentColor, borderColor, emptyMsg }) => {
@@ -1780,16 +1827,15 @@ export default function ProfilePage() {
         { data: sessionsData },
         { data: ratingsData },
       ] = await Promise.all([
-        supabase.from("users").select("*").eq("id", uid).single(),
+        supabase.from("profiles").select("*").eq("id", uid).single(),
         supabase
-          .from("skills")
-          .select("*")
-          .eq("user_id", uid)
-          .order("created_at", { ascending: false }),
+          .from("user_skills")
+          .select("*, skill:skill_id(*)")
+          .eq("user_id", uid),
         supabase
           .from("sessions")
           .select(
-            "*, requester:requester_id(name,avatar_url), provider:provider_id(name,avatar_url), skill:skill_id(skill_name)",
+            "*, requester:requester_id(name,avatar_url), provider:provider_id(name,avatar_url), skill:skill_id(name)",
           )
           .or(`requester_id.eq.${uid},provider_id.eq.${uid}`)
           .order("created_at", { ascending: false })
@@ -1802,7 +1848,7 @@ export default function ProfilePage() {
       ]);
 
       setProfile(profileData);
-      setSkills(skillsData || []);
+      setSkills((skillsData || []).map(s => s.skill).filter(Boolean));
       setSessions(sessionsData || []);
       setRatings(ratingsData || []);
       setLoading(false);
@@ -1811,23 +1857,25 @@ export default function ProfilePage() {
   }, [supabase, router]);
 
   const handleProfileUpdate = async (updatedData) => {
+    const { department, ...dbData } = updatedData;
     const { data, error } = await supabase
-      .from("users")
-      .update(updatedData)
+      .from("profiles")
+      .update(dbData)
       .eq("id", user.id)
       .select()
       .single();
     if (!error) {
-      setProfile(data);
+      setProfile({ ...data, department });
       setEditOpen(false);
     }
     return { error };
   };
 
   const handleSetupComplete = async (setupData) => {
+    const { department, ...dbData } = setupData;
     const { error } = await supabase
-      .from("users")
-      .upsert({ id: user.id, ...setupData });
+      .from("profiles")
+      .upsert({ id: user.id, ...dbData });
     if (!error) {
       setProfile((prev) => ({ ...prev, ...setupData }));
       router.push("/dashboard");

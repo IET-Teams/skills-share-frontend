@@ -359,7 +359,7 @@ function SkillCard({ skill, isRequested, onRequest }) {
             <BookOpen size={14} style={{ color: "#e8b84b" }} />
           </div>
           <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
-            {skill?.skill_name}
+            {skill?.name}
           </p>
         </div>
 
@@ -419,8 +419,12 @@ function SkillCard({ skill, isRequested, onRequest }) {
 function UserCard({ user, currentUserId, onRequest }) {
   const [expanded, setExpanded] = useState(false);
   const initials = getInitials(user.name);
-  const teachSkills = (user.skills || []).filter((s) => s.type === "teach");
-  const learnSkills = (user.skills || []).filter((s) => s.type === "learn");
+  const teachSkills = (user.user_skills || [])
+    .map((us) => us.skill)
+    .filter((s) => s && s.category === "Teaching");
+  const learnSkills = (user.user_skills || [])
+    .map((us) => us.skill)
+    .filter((s) => s && s.category === "Learning");
   const gradient = getGradient(user.id);
 
   return (
@@ -495,7 +499,7 @@ function UserCard({ user, currentUserId, onRequest }) {
                     border: "1px solid rgba(232,184,75,0.1)",
                   }}
                 >
-                  {s.skill_name}
+                  {s.name}
                 </button>
               ))}
               {!expanded && teachSkills.length > 3 && (
@@ -529,7 +533,7 @@ function UserCard({ user, currentUserId, onRequest }) {
                     border: "1px solid rgba(29,158,117,0.1)",
                   }}
                 >
-                  {s.skill_name}
+                  {s.name}
                 </span>
               ))}
               {!expanded && learnSkills.length > 3 && (
@@ -948,18 +952,16 @@ export default function ExplorePage() {
       let query = supabase
         .from("skills")
         .select(`
-          id, skill_name, type, created_at,
-          user:user_id (id, name, department, avatar_url, bio)
+          id, name, category, created_at
         `)
-        .eq("type", skillType)
-        .neq("user_id", currentUser?.id ?? "00000000-0000-0000-0000-000000000000");
+        .eq("category", skillType === "teach" ? "Teaching" : "Learning");
 
       if (searchQuery) {
-        query = query.ilike("skill_name", `%${searchQuery}%`);
+        query = query.ilike("name", `%${searchQuery}%`);
       }
 
       if (category !== "All" && CATEGORY_MAP[category]) {
-        query = query.in("skill_name", CATEGORY_MAP[category]);
+        query = query.in("name", CATEGORY_MAP[category]);
       }
 
       query = query.order("created_at", { ascending: false }).limit(40);
@@ -968,10 +970,10 @@ export default function ExplorePage() {
       if (!error) setSkills(data || []);
     } else {
       let query = supabase
-        .from("users")
+        .from("profiles")
         .select(`
           id, name, department, bio, avatar_url, created_at,
-          skills (id, skill_name, type)
+          user_skills (skill:skill_id (id, name, category))
         `)
         .neq("id", currentUser?.id ?? "00000000-0000-0000-0000-000000000000");
 

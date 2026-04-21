@@ -173,7 +173,7 @@ function SessionCard({ session, type, index, onAccept, onReject, onRate, current
                 style={{ background: "rgba(232,184,75,0.07)", color: "#8a8070", border: "1px solid #2a2520" }}
               >
                 <BookOpen size={9} />
-                {session.skill?.skill_name || "Skill"}
+                {session.skill?.name || "Skill"}
               </span>
             </div>
           </div>
@@ -548,7 +548,7 @@ export default function SessionsPage() {
       .from("sessions")
       .select(`
         id, requester_id, provider_id, status, scheduled_time, message, created_at,
-        skill:skill_id (id, skill_name),
+        skill:skill_id (id, name),
         requester:requester_id (id, name, department, avatar_url),
         provider:provider_id (id, name, department, avatar_url)
       `)
