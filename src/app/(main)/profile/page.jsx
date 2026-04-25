@@ -1828,7 +1828,7 @@ export default function ProfilePage() {
         { data: sessionsData },
         { data: ratingsData },
       ] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", uid).single(),
+        supabase.from("profiles").select("*").eq("id", authUser.id).single(),
         supabase
           .from("user_skills")
           .select("*, skill:skill_id(*)")
@@ -1862,7 +1862,7 @@ export default function ProfilePage() {
 
     const { data, error } = await supabase
       .from("profiles")
-      .update(dbData)
+      .update(updatedData)
       .eq("id", user.id)
       .select()
       .single();
@@ -1877,7 +1877,7 @@ export default function ProfilePage() {
     const { department, ...dbData } = setupData;
     const { error } = await supabase
       .from("profiles")
-      .upsert({ id: user.id, ...dbData });
+      .upsert({ id: user.id, ...setupData });
     if (!error) {
       setProfile((prev) => ({ ...prev, ...setupData }));
       router.push("/dashboard");

@@ -326,7 +326,7 @@ export default function ChatPage() {
     const partnerIds = [...convosMap.keys()];
     if (partnerIds.length > 0) {
       const { data: partners } = await supabase
-        .from("users")
+        .from("profiles")
         .select("id, name, department, avatar_url")
         .in("id", partnerIds);
 
@@ -357,7 +357,7 @@ export default function ChatPage() {
         } else {
           // Create a new conversation stub
           const { data: targetUser } = await supabase
-            .from("users")
+            .from("profiles")
             .select("id, name, department, avatar_url")
             .eq("id", targetUserId)
             .single();
@@ -381,7 +381,7 @@ export default function ChatPage() {
     } else if (targetUserId) {
       // No existing conversations, but have a target user
       const { data: targetUser } = await supabase
-        .from("users")
+        .from("profiles")
         .select("id, name, department, avatar_url")
         .eq("id", targetUserId)
         .single();
