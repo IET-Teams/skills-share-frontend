@@ -1032,6 +1032,7 @@ function ProfileEditModal({ profile, onSave, onClose }) {
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const handleSave = async () => {
+    
     if (!form.name.trim()) {
       setError("Name is required");
       return;
@@ -1857,7 +1858,8 @@ export default function ProfilePage() {
   }, [supabase, router]);
 
   const handleProfileUpdate = async (updatedData) => {
-    const { department, ...dbData } = updatedData;
+    const {...dbData } = updatedData;
+
     const { data, error } = await supabase
       .from("profiles")
       .update(dbData)
@@ -1865,7 +1867,7 @@ export default function ProfilePage() {
       .select()
       .single();
     if (!error) {
-      setProfile({ ...data, department });
+      setProfile({ ...data });
       setEditOpen(false);
     }
     return { error };
