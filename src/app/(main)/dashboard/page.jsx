@@ -292,11 +292,11 @@ export default function DashboardPage() {
       } = await supabase.auth.getUser();
       if (authUser) {
         const { data } = await supabase
-          .from("users")
+          .from("profiles")
           .select("*")
           .eq("id", authUser.id)
           .single();
-        setUser(data || { name: authUser.email?.split("@")[0] || "Student" });
+        setUser(data || { name: authUser.name?.split(" ")[0] || "Student" });
       }
       setLoading(false);
     }

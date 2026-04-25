@@ -1758,7 +1758,7 @@ export default function ProfilePage() {
         { data: sessionsData },
         { data: ratingsData },
       ] = await Promise.all([
-        supabase.from("users").select("*").eq("id", authUser.id).single(),
+        supabase.from("profiles").select("*").eq("id", authUser.id).single(),
         supabase
           .from("skills")
           .select("*")
@@ -1790,7 +1790,7 @@ export default function ProfilePage() {
 
   const handleProfileUpdate = async (updatedData) => {
     const { data, error } = await supabase
-      .from("users")
+      .from("profiles")
       .update(updatedData)
       .eq("id", user.id)
       .select()
@@ -1804,7 +1804,7 @@ export default function ProfilePage() {
 
   const handleSetupComplete = async (setupData) => {
     const { error } = await supabase
-      .from("users")
+      .from("profiles")
       .upsert({ id: user.id, ...setupData });
     if (!error) {
       setProfile((prev) => ({ ...prev, ...setupData }));

@@ -695,7 +695,7 @@ export default function Navbar({ CURRENT_USER, children }) {
   //     if (!user) return;
 
   //     const { data } = await supabase
-  //       .from("users")
+  //       .from("profiles")
   //       .select("id, name, department, avatar_url")
   //       .eq("id", user.id)
   //       .single();
