@@ -968,7 +968,7 @@ export default function ExplorePage() {
       if (!error) setSkills(data || []);
     } else {
       let query = supabase
-        .from("users")
+        .from("profiles")
         .select(`
           id, name, department, bio, avatar_url, created_at,
           skills (id, skill_name, type)
