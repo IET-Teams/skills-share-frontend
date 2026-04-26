@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createBrowserClient } from "@supabase/ssr";
+import { useRole } from "@/context/RoleContext";
 import {
   Briefcase,
   Search,
@@ -380,6 +381,7 @@ export default function InternshipsPage() {
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   );
+  const { role } = useRole();
 
   const [currentUser, setCurrentUser] = useState(null);
   const [internships, setInternships] = useState([]);
@@ -457,15 +459,17 @@ export default function InternshipsPage() {
                 Discover and share internship opportunities
               </p>
             </div>
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setShowPostModal(true)}
-              className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all"
-              style={{ background: "#e8b84b", color: "#0e0c0a" }}
-            >
-              <Plus size={14} />
-              Post Internship
-            </motion.button>
+            {role === "tutor" && (
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setShowPostModal(true)}
+                className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all"
+                style={{ background: "#e8b84b", color: "#0e0c0a" }}
+              >
+                <Plus size={14} />
+                Post Internship
+              </motion.button>
+            )}
           </motion.div>
         </motion.div>
 

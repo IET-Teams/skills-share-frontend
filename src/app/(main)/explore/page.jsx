@@ -1,1139 +1,677 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createBrowserClient } from "@supabase/ssr";
 import {
   Search,
-  Users,
-  BookOpen,
-  X,
-  SlidersHorizontal,
-  ChevronDown,
-  SearchX,
   GraduationCap,
-  Sparkles,
-  ArrowUpRight,
   MessageCircle,
-  Calendar,
+  ArrowUpRight,
+  Star,
+  Trophy,
+  Sparkles,
   MessageSquare,
+  ChevronRight,
   Loader2,
-  CheckCircle2,
+  X,
 } from "lucide-react";
-
-// ─── Animation variants ───────────────────────────────────────────────────────
-const STAGGER = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.055 } },
-};
+import { useRole } from "@/context/RoleContext";
 
 const CARD_ANIM = {
-  hidden: { opacity: 0, y: 18, scale: 0.97 },
+  hidden: { opacity: 0, y: 12 },
   visible: {
     opacity: 1,
     y: 0,
-    scale: 1,
-    transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
   },
 };
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const SKILL_CATEGORIES = [
-  "All", "Development", "Design", "Data Science", "Mobile", "DevOps", "Languages", "Soft Skills",
-];
-
-const CATEGORY_MAP = {
-  Development: ["React", "Node.js", "Python", "Java", "TypeScript", "Next.js", "Express", "Django", "Spring Boot", "C++", "PHP"],
-  Design: ["Figma", "UI/UX Design", "Illustrator", "Photoshop", "Canva", "Motion Design", "3D Modeling"],
-  "Data Science": ["Machine Learning", "Data Analysis", "TensorFlow", "PyTorch", "Pandas", "SQL", "Power BI", "Tableau"],
-  Mobile: ["Flutter", "React Native", "Kotlin", "Swift", "Android", "iOS"],
-  DevOps: ["Docker", "AWS", "Linux", "CI/CD", "Kubernetes", "Git"],
-  Languages: ["English", "German", "Japanese", "French", "Spanish"],
-  "Soft Skills": ["Public Speaking", "Leadership", "Communication", "Project Management"],
-};
-
-const SORT_OPTIONS = [
-  { id: "recent", label: "Most recent" },
-  { id: "rating", label: "Top rated" },
-  { id: "sessions", label: "Most sessions" },
-];
-
-const AVATAR_GRADIENTS = [
-  "linear-gradient(135deg, rgba(232,184,75,0.25) 0%, rgba(232,184,75,0.05) 100%)",
-  "linear-gradient(135deg, rgba(96,165,250,0.2) 0%, rgba(96,165,250,0.04) 100%)",
-  "linear-gradient(135deg, rgba(167,139,250,0.2) 0%, rgba(167,139,250,0.04) 100%)",
-  "linear-gradient(135deg, rgba(29,158,117,0.2) 0%, rgba(29,158,117,0.04) 100%)",
-  "linear-gradient(135deg, rgba(251,146,60,0.2) 0%, rgba(251,146,60,0.04) 100%)",
-];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function getInitials(name = "") {
-  return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
-}
-
-function getGradient(id = "") {
-  const idx = id.charCodeAt(0) % AVATAR_GRADIENTS.length;
-  return AVATAR_GRADIENTS[idx];
-}
-
-// ─── ExploreHeader ────────────────────────────────────────────────────────────
-function ExploreHeader({ view, onViewChange, searchQuery, onSearchChange }) {
-  const inputRef = useRef(null);
-
   return (
-    <div
-      className="sticky top-0 z-30 px-4 py-5 md:px-8"
-      style={{
-        background: "rgba(14,12,10,0.92)",
-        backdropFilter: "blur(16px)",
-        borderBottom: "1px solid #1a1814",
-      }}
-    >
-      <div className="mx-auto max-w-6xl">
-        {/* Title row */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="mb-4 flex items-center justify-between"
-        >
-          <div>
-            <h1 className="text-xl font-medium" style={{ color: "#f5f0e8" }}>
-              Explore
-            </h1>
-            <p className="text-xs" style={{ color: "#6a6050" }}>
-              Discover skills & connect with learners
-            </p>
-          </div>
-
-          {/* View toggle */}
-          <div
-            className="flex items-center gap-1 rounded-xl p-1"
-            style={{ background: "#141210", border: "1px solid #2a2520" }}
-          >
-            {[
-              { id: "skills", icon: BookOpen, label: "Skills" },
-              { id: "people", icon: Users, label: "People" },
-            ].map(({ id, icon: Icon, label }) => (
-              <motion.button
-                key={id}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => onViewChange(id)}
-                className="relative flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors"
-                style={{ color: view === id ? "#0e0c0a" : "#6a6050" }}
-              >
-                {view === id && (
-                  <motion.div
-                    layoutId="explore-view-bg"
-                    className="absolute inset-0 rounded-lg"
-                    style={{ background: "#e8b84b" }}
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
-                  />
-                )}
-                <Icon size={12} className="relative z-10" />
-                <span className="relative z-10">{label}</span>
-              </motion.button>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Search bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.08 }}
-          className="relative"
-        >
-          <Search
-            size={15}
-            className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: "#4a4438" }}
-          />
-          <input
-            ref={inputRef}
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder={
-              view === "skills"
-                ? "Search skills — React, Python, Figma…"
-                : "Search students by name…"
-            }
-            className="w-full rounded-xl py-3 pl-10 pr-10 text-sm outline-none transition-all"
-            style={{
-              background: "#141210",
-              border: "1px solid #2a2520",
-              color: "#f5f0e8",
-            }}
-            onFocus={(e) => (e.target.style.borderColor = "#e8b84b")}
-            onBlur={(e) => (e.target.style.borderColor = "#2a2520")}
-          />
-          {searchQuery && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              onClick={() => onSearchChange("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full"
-              style={{ background: "#2a2520" }}
-            >
-              <X size={10} style={{ color: "#8a8070" }} />
-            </motion.button>
-          )}
-        </motion.div>
-      </div>
-    </div>
+    name
+      .split(" ")
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "SB"
   );
 }
 
-// ─── FilterBar ────────────────────────────────────────────────────────────────
-function FilterBar({
-  view,
-  category,
-  onCategoryChange,
-  skillType,
-  onSkillTypeChange,
-  department,
-  onDepartmentChange,
-  departments,
-  sortBy,
-  onSortChange,
-  categories,
-  resultCount,
-}) {
-  const scrollRef = useRef(null);
-  const [sortOpen, setSortOpen] = useState(false);
-
+function StarRow({ value }) {
+  const rounded = Math.round(value || 0);
   return (
-    <div className="mt-4 space-y-3">
-      {/* Row 1: category chips (skills view) or dept chips (people view) */}
-      <div className="flex items-center gap-3">
-        <div
-          ref={scrollRef}
-          className="flex flex-1 gap-2 overflow-x-auto pb-1"
-          style={{ scrollbarWidth: "none" }}
-        >
-          {view === "skills"
-            ? categories.map((cat) => (
-                <motion.button
-                  key={cat}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => onCategoryChange(cat)}
-                  className="shrink-0 rounded-xl px-3 py-2 text-xs font-medium transition-all"
-                  style={
-                    category === cat
-                      ? {
-                          background: "#e8b84b",
-                          color: "#0e0c0a",
-                        }
-                      : {
-                          background: "#141210",
-                          color: "#6a6050",
-                          border: "1px solid #2a2520",
-                        }
-                  }
-                >
-                  {cat}
-                </motion.button>
-              ))
-            : departments.map((dept) => (
-                <motion.button
-                  key={dept}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => onDepartmentChange(dept)}
-                  className="shrink-0 rounded-xl px-3 py-2 text-xs font-medium transition-all"
-                  style={
-                    department === dept
-                      ? { background: "#e8b84b", color: "#0e0c0a" }
-                      : { background: "#141210", color: "#6a6050", border: "1px solid #2a2520" }
-                  }
-                >
-                  {dept}
-                </motion.button>
-              ))}
-        </div>
-      </div>
-
-      {/* Row 2: teach/learn toggle + sort + result count */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          {/* Teach / Learn toggle (skills view only) */}
-          {view === "skills" && (
-            <div
-              className="flex items-center gap-0.5 rounded-xl p-0.5"
-              style={{ background: "#141210", border: "1px solid #2a2520" }}
-            >
-              {[
-                { id: "teach", label: "Teaching", activeColor: "#e8b84b", activeBg: "rgba(232,184,75,0.1)" },
-                { id: "learn", label: "Learning", activeColor: "#1d9e75", activeBg: "rgba(29,158,117,0.1)" },
-              ].map(({ id, label, activeColor, activeBg }) => (
-                <motion.button
-                  key={id}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => onSkillTypeChange(id)}
-                  className="relative rounded-lg px-3 py-1.5 text-xs font-medium transition-all"
-                  style={{
-                    background: skillType === id ? activeBg : "transparent",
-                    color: skillType === id ? activeColor : "#4a4438",
-                  }}
-                >
-                  {label}
-                </motion.button>
-              ))}
-            </div>
-          )}
-
-          {/* Result count */}
-          <span className="text-xs" style={{ color: "#4a4438" }}>
-            {resultCount} {view === "skills" ? "skills" : "people"} found
-          </span>
-        </div>
-
-        {/* Sort dropdown */}
-        <div className="relative">
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={() => setSortOpen((o) => !o)}
-            className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs transition-all"
-            style={{ background: "#141210", border: "1px solid #2a2520", color: "#8a8070" }}
-          >
-            <SlidersHorizontal size={11} />
-            {SORT_OPTIONS.find((o) => o.id === sortBy)?.label}
-            <ChevronDown size={10} style={{ transform: sortOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
-          </motion.button>
-
-          <AnimatePresence>
-            {sortOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                transition={{ duration: 0.15 }}
-                className="absolute right-0 top-full z-20 mt-1 w-44 rounded-xl border py-1 shadow-xl"
-                style={{ background: "#141210", borderColor: "#2a2520" }}
-                onMouseLeave={() => setSortOpen(false)}
-              >
-                {SORT_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    onClick={() => { onSortChange(opt.id); setSortOpen(false); }}
-                    className="flex w-full items-center justify-between px-3 py-2.5 text-xs transition-colors"
-                    style={{
-                      color: sortBy === opt.id ? "#e8b84b" : "#8a8070",
-                      background: sortBy === opt.id ? "rgba(232,184,75,0.05)" : "transparent",
-                    }}
-                  >
-                    {opt.label}
-                    {sortBy === opt.id && (
-                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#e8b84b" }} />
-                    )}
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── SkillCard ────────────────────────────────────────────────────────────────
-function SkillCard({ skill, isRequested, onRequest }) {
-  const provider = skill?.user;
-  const initials = getInitials(provider?.name);
-  const gradient = getGradient(provider?.id || "");
-
-  return (
-    <motion.div
-      whileHover={{ y: -3, transition: { duration: 0.2 } }}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border transition-colors"
-      style={{ background: "#141210", borderColor: "#2a2520" }}
-    >
-      <div className="flex flex-1 flex-col p-4">
-        {/* Skill name */}
-        <div className="mb-3 flex items-center gap-2">
-          <div
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-            style={{ background: "rgba(232,184,75,0.08)" }}
-          >
-            <BookOpen size={14} style={{ color: "#e8b84b" }} />
-          </div>
-          <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
-            {skill?.name}
-          </p>
-        </div>
-
-        {/* Provider info */}
-        {provider && (
-          <div className="mb-3 flex items-center gap-2">
-            {provider.avatar_url ? (
-              <img src={provider.avatar_url} alt={provider.name} className="h-7 w-7 rounded-lg object-cover" />
-            ) : (
-              <div
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-medium"
-                style={{ background: gradient, color: "#e8b84b", border: "1px solid rgba(232,184,75,0.12)" }}
-              >
-                {initials}
-              </div>
-            )}
-            <div className="min-w-0">
-              <p className="truncate text-xs font-medium" style={{ color: "#c8bfb0" }}>
-                {provider.name}
-              </p>
-              {provider.department && (
-                <p className="flex items-center gap-0.5 truncate text-xs" style={{ color: "#4a4438" }}>
-                  <GraduationCap size={9} />
-                  {provider.department}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="flex-1" />
-
-        {/* Request button */}
-        <motion.button
-          whileTap={{ scale: 0.97 }}
-          onClick={onRequest}
-          disabled={isRequested}
-          className="mt-2 w-full rounded-xl py-2.5 text-xs font-medium transition-all"
-          style={
-            isRequested
-              ? { background: "rgba(29,158,117,0.1)", color: "#1d9e75" }
-              : {
-                  background: "rgba(232,184,75,0.08)",
-                  color: "#e8b84b",
-                  border: "1px solid rgba(232,184,75,0.15)",
-                }
-          }
-        >
-          {isRequested ? "✓ Requested" : "Request Session"}
-        </motion.button>
-      </div>
-    </motion.div>
-  );
-}
-
-// ─── UserCard ─────────────────────────────────────────────────────────────────
-function UserCard({ user, currentUserId, onRequest }) {
-  const [expanded, setExpanded] = useState(false);
-  const initials = getInitials(user.name);
-  const teachSkills = (user.user_skills || [])
-    .map((us) => us.skill)
-    .filter((s) => s && s.category === "Teaching");
-  const learnSkills = (user.user_skills || [])
-    .map((us) => us.skill)
-    .filter((s) => s && s.category === "Learning");
-  const gradient = getGradient(user.id);
-
-  return (
-    <motion.div
-      whileHover={{ y: -3, transition: { duration: 0.2 } }}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border transition-colors"
-      style={{ background: "#141210", borderColor: "#2a2520" }}
-    >
-      {/* Header band */}
-      <div
-        className="relative overflow-hidden px-4 pb-3 pt-4"
-        style={{ borderBottom: "1px solid #1e1c18" }}
-      >
-        <div
-          className="pointer-events-none absolute inset-0 opacity-30"
-          style={{ background: gradient }}
-        />
-        <div className="relative flex items-start gap-3">
-          {user.avatar_url ? (
-            <img
-              src={user.avatar_url}
-              alt={user.name}
-              className="h-11 w-11 rounded-xl object-cover"
-            />
-          ) : (
-            <div
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-medium"
-              style={{ background: gradient, color: "#e8b84b", border: "1px solid rgba(232,184,75,0.12)" }}
-            >
-              {initials}
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium" style={{ color: "#f5f0e8" }}>
-              {user.name}
-            </p>
-            {user.department && (
-              <p className="mt-0.5 flex items-center gap-1 truncate text-xs" style={{ color: "#6a6050" }}>
-                <GraduationCap size={10} />
-                {user.department}
-              </p>
-            )}
-          </div>
-        </div>
-        {user.bio && (
-          <p
-            className="relative mt-2 line-clamp-2 text-xs leading-relaxed"
-            style={{ color: "#6a6050" }}
-          >
-            {user.bio}
-          </p>
-        )}
-      </div>
-
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        {/* Teach skills */}
-        {teachSkills.length > 0 && (
-          <div>
-            <div className="mb-1.5 flex items-center gap-1">
-              <BookOpen size={10} style={{ color: "#e8b84b" }} />
-              <span className="text-xs" style={{ color: "#4a4438" }}>Teaches</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {teachSkills.slice(0, expanded ? undefined : 3).map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => onRequest(s)}
-                  className="rounded-lg px-2 py-1 text-xs transition-all hover:border-amber-500/30"
-                  style={{
-                    background: "rgba(232,184,75,0.06)",
-                    color: "#8a8070",
-                    border: "1px solid rgba(232,184,75,0.1)",
-                  }}
-                >
-                  {s.name}
-                </button>
-              ))}
-              {!expanded && teachSkills.length > 3 && (
-                <button
-                  onClick={() => setExpanded(true)}
-                  className="rounded-lg px-2 py-1 text-xs"
-                  style={{ color: "#4a4438" }}
-                >
-                  +{teachSkills.length - 3}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Learn skills */}
-        {learnSkills.length > 0 && (
-          <div>
-            <div className="mb-1.5 flex items-center gap-1">
-              <Sparkles size={10} style={{ color: "#1d9e75" }} />
-              <span className="text-xs" style={{ color: "#4a4438" }}>Wants to learn</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {learnSkills.slice(0, expanded ? undefined : 3).map((s) => (
-                <span
-                  key={s.id}
-                  className="rounded-lg px-2 py-1 text-xs"
-                  style={{
-                    background: "rgba(29,158,117,0.06)",
-                    color: "#6a6050",
-                    border: "1px solid rgba(29,158,117,0.1)",
-                  }}
-                >
-                  {s.name}
-                </span>
-              ))}
-              {!expanded && learnSkills.length > 3 && (
-                <button
-                  onClick={() => setExpanded(true)}
-                  className="rounded-lg px-2 py-1 text-xs"
-                  style={{ color: "#4a4438" }}
-                >
-                  +{learnSkills.length - 3}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {teachSkills.length === 0 && learnSkills.length === 0 && (
-          <p className="text-xs italic" style={{ color: "#2a2520" }}>
-            No skills listed yet
-          </p>
-        )}
-
-        <div className="flex-1" />
-
-        {/* Actions */}
-        <div className="flex gap-2 pt-1">
-          <motion.a
-            href={`/chat?user=${user.id}`}
-            whileTap={{ scale: 0.97 }}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-medium transition-all"
-            style={{
-              border: "1px solid #2a2520",
-              color: "#6a6050",
-            }}
-          >
-            <MessageCircle size={11} />
-            Message
-          </motion.a>
-          <motion.a
-            href={`/profile?id=${user.id}`}
-            whileTap={{ scale: 0.97 }}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-medium transition-all"
-            style={{
-              background: "rgba(232,184,75,0.08)",
-              color: "#e8b84b",
-              border: "1px solid rgba(232,184,75,0.15)",
-            }}
-          >
-            View profile
-            <ArrowUpRight size={10} />
-          </motion.a>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-// ─── EmptyExplore ─────────────────────────────────────────────────────────────
-function EmptyExplore({ type, query, onClear }) {
-  const isSkills = type === "skills";
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35 }}
-      className="flex flex-col items-center justify-center rounded-2xl border py-20 text-center"
-      style={{ background: "#0a0908", borderColor: "#2a2520" }}
-    >
-      <div
-        className="flex h-14 w-14 items-center justify-center rounded-2xl"
-        style={{ background: "#141210", border: "1px solid #2a2520" }}
-      >
-        {query ? (
-          <SearchX size={22} style={{ color: "#3a342c" }} />
-        ) : isSkills ? (
-          <BookOpen size={22} style={{ color: "#3a342c" }} />
-        ) : (
-          <Users size={22} style={{ color: "#3a342c" }} />
-        )}
-      </div>
-
-      <p className="mt-4 text-sm font-medium" style={{ color: "#4a4438" }}>
-        {query
-          ? `No results for "${query}"`
-          : isSkills
-            ? "No skills found"
-            : "No students found"}
-      </p>
-      <p className="mt-1 text-xs" style={{ color: "#2a2520" }}>
-        {query
-          ? "Try a different search or clear the filters"
-          : isSkills
-            ? "Be the first to add this skill"
-            : "Try a different department filter"}
-      </p>
-
-      <div className="mt-5 flex gap-2">
-        {query && (
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={onClear}
-            className="rounded-xl px-4 py-2 text-xs font-medium"
-            style={{
-              background: "rgba(232,184,75,0.08)",
-              color: "#e8b84b",
-              border: "1px solid rgba(232,184,75,0.15)",
-            }}
-          >
-            Clear search
-          </motion.button>
-        )}
-        {isSkills && (
-          <motion.a
-            href="/profile?tab=skills"
-            whileTap={{ scale: 0.97 }}
-            className="rounded-xl px-4 py-2 text-xs font-medium"
-            style={{ border: "1px solid #2a2520", color: "#6a6050" }}
-          >
-            Add your skills
-          </motion.a>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
-// ─── RequestModal ─────────────────────────────────────────────────────────────
-function RequestModal({ skill, provider, onConfirm, onClose }) {
-  const [scheduledTime, setScheduledTime] = useState("");
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
-
-  const initials = getInitials(provider?.name);
-  const skillName = skill?.skill_name || "Session";
-
-  const handleSubmit = async () => {
-    setLoading(true);
-    setError("");
-    const { error: err } = await onConfirm({
-      skillId: skill?.id,
-      providerId: provider?.id,
-      scheduledTime: scheduledTime || null,
-      message,
-    });
-    if (err) {
-      setError("Failed to send request. Please try again.");
-      setLoading(false);
-    } else {
-      setSuccess(true);
-      setLoading(false);
-      setTimeout(onClose, 1800);
-    }
-  };
-
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const minDate = tomorrow.toISOString().slice(0, 16);
-
-  return (
-    <>
-      {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="fixed inset-0 z-40"
-        style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)" }}
-      />
-
-      {/* Modal */}
-      <motion.div
-        initial={{ y: "100%", opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: "100%", opacity: 0 }}
-        transition={{ type: "spring", damping: 26, stiffness: 250 }}
-        className="fixed bottom-0 left-0 right-0 z-50 mx-auto max-w-lg rounded-t-3xl"
-        style={{ background: "#0a0908", border: "1px solid #2a2520", borderBottom: "none" }}
-      >
-        {/* Handle */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="h-1 w-10 rounded-full" style={{ background: "#2a2520" }} />
-        </div>
-
-        {/* Success state */}
-        {success ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center justify-center px-6 py-12 text-center"
-          >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", bounce: 0.5, delay: 0.1 }}
-              className="flex h-16 w-16 items-center justify-center rounded-2xl"
-              style={{ background: "rgba(29,158,117,0.12)", border: "1px solid rgba(29,158,117,0.2)" }}
-            >
-              <CheckCircle2 size={28} style={{ color: "#1d9e75" }} />
-            </motion.div>
-            <p className="mt-4 text-base font-medium" style={{ color: "#f5f0e8" }}>
-              Request sent!
-            </p>
-            <p className="mt-1 text-sm" style={{ color: "#6a6050" }}>
-              {provider?.name} will be notified
-            </p>
-          </motion.div>
-        ) : (
-          <>
-            {/* Header */}
-            <div
-              className="flex items-center justify-between px-6 py-4"
-              style={{ borderBottom: "1px solid #1a1814" }}
-            >
-              <h2 className="text-base font-medium" style={{ color: "#f5f0e8" }}>
-                Request session
-              </h2>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={onClose}
-                className="flex h-8 w-8 items-center justify-center rounded-xl"
-                style={{ background: "#141210" }}
-              >
-                <X size={14} style={{ color: "#8a8070" }} />
-              </motion.button>
-            </div>
-
-            {/* Provider + skill summary */}
-            <div className="px-6 py-4" style={{ borderBottom: "1px solid #1a1814" }}>
-              <div className="flex items-center gap-3">
-                {provider?.avatar_url ? (
-                  <img src={provider.avatar_url} alt={provider.name} className="h-10 w-10 rounded-xl object-cover" />
-                ) : (
-                  <div
-                    className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-medium"
-                    style={{ background: "rgba(232,184,75,0.1)", color: "#e8b84b" }}
-                  >
-                    {initials}
-                  </div>
-                )}
-                <div>
-                  <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
-                    {provider?.name}
-                  </p>
-                  <div className="mt-0.5 flex items-center gap-1.5">
-                    {provider?.department && (
-                      <span className="flex items-center gap-0.5 text-xs" style={{ color: "#6a6050" }}>
-                        <GraduationCap size={9} />
-                        {provider.department}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="ml-auto">
-                  <span
-                    className="rounded-xl px-2.5 py-1 text-xs font-medium"
-                    style={{ background: "rgba(232,184,75,0.1)", color: "#e8b84b" }}
-                  >
-                    {skillName}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Form */}
-            <div className="space-y-4 px-6 py-5">
-              {/* Date picker */}
-              <div>
-                <label
-                  className="mb-1.5 flex items-center gap-1.5 text-xs font-medium"
-                  style={{ color: "#8a8070" }}
-                >
-                  <Calendar size={11} />
-                  Preferred time <span style={{ color: "#3a342c" }}>(optional)</span>
-                </label>
-                <input
-                  type="datetime-local"
-                  value={scheduledTime}
-                  min={minDate}
-                  onChange={(e) => setScheduledTime(e.target.value)}
-                  className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
-                  style={{
-                    background: "#141210",
-                    border: "1px solid #2a2520",
-                    color: scheduledTime ? "#f5f0e8" : "#4a4438",
-                    colorScheme: "dark",
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = "#e8b84b")}
-                  onBlur={(e) => (e.target.style.borderColor = "#2a2520")}
-                />
-              </div>
-
-              {/* Message */}
-              <div>
-                <label
-                  className="mb-1.5 flex items-center gap-1.5 text-xs font-medium"
-                  style={{ color: "#8a8070" }}
-                >
-                  <MessageSquare size={11} />
-                  Message <span style={{ color: "#3a342c" }}>(optional)</span>
-                </label>
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder={`Hey! I'd love to learn ${skillName} from you…`}
-                  rows={3}
-                  className="w-full resize-none rounded-xl px-4 py-3 text-sm outline-none transition-all"
-                  style={{
-                    background: "#141210",
-                    border: "1px solid #2a2520",
-                    color: "#f5f0e8",
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = "#e8b84b")}
-                  onBlur={(e) => (e.target.style.borderColor = "#2a2520")}
-                />
-              </div>
-
-              {error && (
-                <p className="text-xs" style={{ color: "#b05252" }}>
-                  {error}
-                </p>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div
-              className="flex gap-3 px-6 py-4"
-              style={{ borderTop: "1px solid #1a1814" }}
-            >
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={onClose}
-                className="flex-1 rounded-xl py-3 text-sm transition-colors"
-                style={{ border: "1px solid #2a2520", color: "#6a6050" }}
-              >
-                Cancel
-              </motion.button>
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={handleSubmit}
-                disabled={loading}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium"
-                style={{
-                  background: loading ? "#1a1814" : "#e8b84b",
-                  color: loading ? "#3a342c" : "#0e0c0a",
-                }}
-              >
-                {loading && <Loader2 size={13} className="animate-spin" />}
-                {loading ? "Sending…" : "Send request"}
-              </motion.button>
-            </div>
-          </>
-        )}
-      </motion.div>
-    </>
-  );
-}
-
-// ─── LoadingSkeleton ──────────────────────────────────────────────────────────
-function LoadingSkeleton({ view }) {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <motion.div
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Star
           key={i}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: [0.3, 0.6, 0.3] }}
-          transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.1 }}
-          className="rounded-2xl border p-5"
-          style={{ background: "#141210", borderColor: "#1e1c18", height: view === "skills" ? 160 : 200 }}
+          size={12}
+          style={{
+            color: i <= rounded ? "#e8b84b" : "#2a2520",
+            fill: i <= rounded ? "#e8b84b" : "transparent",
+          }}
         />
       ))}
     </div>
   );
 }
 
-// ─── Main Explore Page ────────────────────────────────────────────────────────
+function Avatar({ name, avatarUrl }) {
+  const initials = getInitials(name);
+  return avatarUrl ? (
+    <img
+      src={avatarUrl}
+      alt={name}
+      className="h-11 w-11 rounded-xl object-cover"
+    />
+  ) : (
+    <div
+      className="flex h-11 w-11 items-center justify-center rounded-xl text-sm font-medium"
+      style={{
+        background: "rgba(232,184,75,0.1)",
+        color: "#e8b84b",
+        border: "1px solid rgba(232,184,75,0.18)",
+      }}
+    >
+      {initials}
+    </div>
+  );
+}
+
+function ReviewsModal({ tutor, onClose }) {
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="fixed inset-0 z-40"
+        style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}
+      />
+
+      <motion.div
+        initial={{ y: 40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 30, opacity: 0 }}
+        transition={{ type: "spring", damping: 24, stiffness: 260 }}
+        className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-xl rounded-t-3xl border"
+        style={{ background: "#0a0908", borderColor: "#2a2520" }}
+      >
+        <div
+          className="flex items-center justify-between px-5 py-4"
+          style={{ borderBottom: "1px solid #1a1814" }}
+        >
+          <div>
+            <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
+              Reviews for {tutor.name}
+            </p>
+            <div className="mt-1 flex items-center gap-2">
+              <StarRow value={tutor.avgRating} />
+              <span className="text-xs" style={{ color: "#8a8070" }}>
+                {tutor.avgRating ? tutor.avgRating.toFixed(1) : "New"} · {tutor.reviewCount} reviews
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-lg"
+            style={{ background: "#141210" }}
+          >
+            <X size={14} style={{ color: "#8a8070" }} />
+          </button>
+        </div>
+
+        <div className="max-h-[55vh] space-y-2 overflow-y-auto px-5 py-4">
+          {tutor.reviews.length === 0 ? (
+            <div
+              className="rounded-xl border p-3 text-xs"
+              style={{ borderColor: "#2a2520", color: "#6a6050", background: "#141210" }}
+            >
+              No written reviews yet.
+            </div>
+          ) : (
+            tutor.reviews.map((review) => (
+              <div
+                key={review.id}
+                className="rounded-xl border p-3"
+                style={{ borderColor: "#2a2520", background: "#141210" }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium" style={{ color: "#c8bfb0" }}>
+                    {review.raterName || "Student"}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Star size={11} style={{ color: "#e8b84b", fill: "#e8b84b" }} />
+                    <span className="text-xs" style={{ color: "#e8b84b" }}>
+                      {review.score}
+                    </span>
+                  </div>
+                </div>
+                <p className="mt-1 text-xs leading-relaxed" style={{ color: "#8a8070" }}>
+                  {review.feedback || "No comment provided."}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
+function TutorCard({ tutor, onOpenReviews }) {
+  const topCourse = tutor.courses?.[0];
+
+  return (
+    <motion.div
+      variants={CARD_ANIM}
+      whileHover={{ y: -2, transition: { duration: 0.2 } }}
+      className="rounded-2xl border p-4"
+      style={{ background: "#141210", borderColor: "#2a2520" }}
+    >
+      <div className="flex items-start gap-3">
+        <Avatar name={tutor.name} avatarUrl={tutor.avatar_url} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium" style={{ color: "#f5f0e8" }}>
+            {tutor.name}
+          </p>
+          <div className="mt-0.5 flex items-center gap-1 text-xs" style={{ color: "#6a6050" }}>
+            <GraduationCap size={10} />
+            <span className="truncate">{tutor.department || "Campus"}</span>
+          </div>
+
+          <div className="mt-2 flex items-center gap-2">
+            <StarRow value={tutor.avgRating} />
+            <span className="text-xs" style={{ color: "#8a8070" }}>
+              {tutor.avgRating ? tutor.avgRating.toFixed(1) : "New"} · {tutor.reviewCount} reviews
+            </span>
+          </div>
+
+          <div className="mt-1 text-xs" style={{ color: "#4a4438" }}>
+            {tutor.sessionsTaught} sessions taught
+          </div>
+        </div>
+      </div>
+
+      {tutor.bio && (
+        <p className="mt-3 line-clamp-2 text-xs leading-relaxed" style={{ color: "#8a8070" }}>
+          {tutor.bio}
+        </p>
+      )}
+
+      {(topCourse?.short_description || topCourse?.description) && (
+        <div
+          className="mt-3 rounded-xl border p-2.5"
+          style={{ borderColor: "#2a2520", background: "#0e0c0a" }}
+        >
+          <p className="text-[10px] uppercase tracking-widest" style={{ color: "#4a4438" }}>
+            Course details
+          </p>
+          <p className="mt-1 line-clamp-3 text-xs leading-relaxed" style={{ color: "#8a8070" }}>
+            {topCourse.short_description || topCourse.description}
+          </p>
+        </div>
+      )}
+
+      <div className="mt-3">
+        <p className="mb-1.5 text-[10px] uppercase tracking-wider" style={{ color: "#4a4438" }}>
+          Teaching
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {tutor.teachSkills.slice(0, 6).map((skill) => (
+            <span
+              key={skill}
+              className="rounded-lg px-2 py-1 text-xs"
+              style={{
+                background: "rgba(232,184,75,0.08)",
+                color: "#8a8070",
+                border: "1px solid rgba(232,184,75,0.12)",
+              }}
+            >
+              {skill}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-center gap-2">
+        <button
+          onClick={() => onOpenReviews(tutor)}
+          className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs"
+          style={{ border: "1px solid #2a2520", color: "#8a8070" }}
+        >
+          <MessageSquare size={11} />
+          Reviews
+        </button>
+        <Link
+          href={`/chat?user=${tutor.id}`}
+          className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs"
+          style={{ border: "1px solid #2a2520", color: "#8a8070" }}
+        >
+          <MessageCircle size={11} />
+          Chat
+        </Link>
+        <Link
+          href={`/profile?id=${tutor.id}`}
+          className="ml-auto flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-medium"
+          style={{
+            background: "rgba(232,184,75,0.08)",
+            border: "1px solid rgba(232,184,75,0.2)",
+            color: "#e8b84b",
+          }}
+        >
+          View Profile
+          <ArrowUpRight size={11} />
+        </Link>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function ExplorePage() {
+  const router = useRouter();
+  const { role } = useRole();
+
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   );
 
-  const [currentUser, setCurrentUser] = useState(null);
-  const [view, setView] = useState("skills"); // "skills" | "people"
-  const [category, setCategory] = useState("All");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [skillType, setSkillType] = useState("teach"); // "teach" | "learn"
-  const [department, setDepartment] = useState("All");
-  const [sortBy, setSortBy] = useState("recent"); // "recent" | "rating" | "sessions"
-
-  const [skills, setSkills] = useState([]);
-  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [departments, setDepartments] = useState(["All"]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [search, setSearch] = useState("");
+  const [selectedSkill, setSelectedSkill] = useState("All");
+  const [myLearnSkills, setMyLearnSkills] = useState([]);
+  const [tutors, setTutors] = useState([]);
+  const [reviewsTutor, setReviewsTutor] = useState(null);
 
-  const [requestTarget, setRequestTarget] = useState(null); // { skill, provider }
-  const [requested, setRequested] = useState(new Set()); // skill ids already requested
+  const loadData = useCallback(
+    async (uid) => {
+      setLoading(true);
 
-  // ── Fetch current user ───────────────────────────────────────────────────
+      const [{ data: profilesData, error: profilesError }, { data: mySkillsData }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, name, department, bio, avatar_url")
+          .neq("id", uid),
+        supabase
+          .from("skills")
+          .select("skill_name")
+          .eq("user_id", uid)
+          .eq("type", "learn"),
+      ]);
+
+      if (profilesError) {
+        setTutors([]);
+        setLoading(false);
+        return;
+      }
+
+      const learnNames = Array.from(
+        new Set((mySkillsData || []).map((r) => r.skill_name).filter(Boolean)),
+      );
+      setMyLearnSkills(learnNames);
+
+      const profileMap = new Map((profilesData || []).map((p) => [p.id, p]));
+
+      const { data: teachCourses } = await supabase
+        .from("courses")
+        .select(
+          "id, tutor_id, title, skill_name, level, short_description, description, is_published, is_active",
+        )
+        .neq("tutor_id", uid)
+        .eq("is_published", true)
+        .eq("is_active", true);
+
+      const coursesByTutor = new Map();
+      (teachCourses || []).forEach((c) => {
+        if (!profileMap.has(c.tutor_id)) return;
+        if (!coursesByTutor.has(c.tutor_id)) coursesByTutor.set(c.tutor_id, []);
+        coursesByTutor.get(c.tutor_id).push(c);
+      });
+
+      const baseTutors = Array.from(coursesByTutor.entries()).map(([tutorId, courses]) => {
+        const row = profileMap.get(tutorId);
+        const teachSkills = Array.from(new Set(courses.map((c) => c.skill_name).filter(Boolean)));
+
+        return {
+          id: row.id,
+          name: row.name || "Tutor",
+          department: row.department || "",
+          bio: row.bio || "",
+          avatar_url: row.avatar_url || "",
+          teachSkills,
+          courses,
+          avgRating: 0,
+          reviewCount: 0,
+          sessionsTaught: 0,
+          reviews: [],
+          leaderboardScore: 0,
+          matchCount: 0,
+        };
+      });
+
+      if (baseTutors.length === 0) {
+        setTutors([]);
+        setLoading(false);
+        return;
+      }
+
+      const tutorIds = baseTutors.map((t) => t.id);
+
+      const [{ data: ratingsData }, { data: sessionsData }] = await Promise.all([
+        supabase
+          .from("ratings")
+          .select("id, rated_id, score, feedback, created_at, rater:rater_id(name,avatar_url)")
+          .in("rated_id", tutorIds)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("sessions")
+          .select("id, provider_id")
+          .in("provider_id", tutorIds)
+          .eq("status", "completed"),
+      ]);
+
+      const ratingsByTutor = new Map();
+      (ratingsData || []).forEach((r) => {
+        if (!ratingsByTutor.has(r.rated_id)) ratingsByTutor.set(r.rated_id, []);
+        ratingsByTutor.get(r.rated_id).push(r);
+      });
+
+      const sessionsByTutor = new Map();
+      (sessionsData || []).forEach((s) => {
+        sessionsByTutor.set(s.provider_id, (sessionsByTutor.get(s.provider_id) || 0) + 1);
+      });
+
+      const learnSet = new Set(learnNames.map((s) => s.toLowerCase()));
+
+      const merged = baseTutors
+        .map((tutor) => {
+          const ratings = ratingsByTutor.get(tutor.id) || [];
+          const reviewCount = ratings.length;
+          const avgRating =
+            reviewCount > 0
+              ? ratings.reduce((acc, r) => acc + Number(r.score || 0), 0) / reviewCount
+              : 0;
+          const sessionsTaught = sessionsByTutor.get(tutor.id) || 0;
+          const reviews = ratings.slice(0, 12).map((r) => ({
+            id: r.id,
+            score: r.score,
+            feedback: r.feedback,
+            raterName: r.rater?.name,
+            raterAvatar: r.rater?.avatar_url,
+            createdAt: r.created_at,
+          }));
+
+          const matchCount = tutor.teachSkills.filter((skill) =>
+            learnSet.has(skill.toLowerCase()),
+          ).length;
+
+          const leaderboardScore = avgRating * sessionsTaught;
+
+          return {
+            ...tutor,
+            avgRating,
+            reviewCount,
+            sessionsTaught,
+            reviews,
+            matchCount,
+            leaderboardScore,
+            courses: [...(tutor.courses || [])].sort((a, b) => {
+              const aName = a.title || a.skill_name || "";
+              const bName = b.title || b.skill_name || "";
+              return aName.localeCompare(bName);
+            }),
+          };
+        })
+        .sort((a, b) => {
+          if (b.matchCount !== a.matchCount) return b.matchCount - a.matchCount;
+          if (b.avgRating !== a.avgRating) return b.avgRating - a.avgRating;
+          return b.sessionsTaught - a.sessionsTaught;
+        });
+
+      setTutors(merged);
+      setLoading(false);
+    },
+    [supabase],
+  );
+
+  useEffect(() => {
+    if (role === "tutor") {
+      router.replace("/profile");
+    }
+  }, [role, router]);
+
   useEffect(() => {
     async function init() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
       setCurrentUser(user);
+      await loadData(user.id);
     }
+
     init();
-  }, [supabase]);
+  }, [loadData, router, supabase]);
 
-  // ── Fetch skills + users ─────────────────────────────────────────────────
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const skillOptions = useMemo(() => {
+    const all = Array.from(new Set(tutors.flatMap((t) => t.teachSkills))).sort((a, b) =>
+      a.localeCompare(b),
+    );
+    return ["All", ...all];
+  }, [tutors]);
 
-    if (view === "skills") {
-      let query = supabase
-        .from("skills")
-        .select(`
-          id, name, category, created_at
-        `)
-        .eq("category", skillType === "teach" ? "Teaching" : "Learning");
+  const filteredTutors = useMemo(() => {
+    const q = search.trim().toLowerCase();
 
-      if (searchQuery) {
-        query = query.ilike("name", `%${searchQuery}%`);
-      }
+      return tutors.filter((t) => {
+        const skillMatch =
+          selectedSkill === "All" || t.teachSkills.some((s) => s === selectedSkill);
 
-      if (category !== "All" && CATEGORY_MAP[category]) {
-        query = query.in("name", CATEGORY_MAP[category]);
-      }
+      if (!skillMatch) return false;
+      if (!q) return true;
 
-      query = query.order("created_at", { ascending: false }).limit(40);
+        return (
+          t.name.toLowerCase().includes(q) ||
+          t.department.toLowerCase().includes(q) ||
+          t.teachSkills.some((s) => s.toLowerCase().includes(q)) ||
+          (t.courses || []).some((c) =>
+            (c.description || "").toLowerCase().includes(q),
+          )
+        );
+      });
+    }, [search, selectedSkill, tutors]);
 
-      const { data, error } = await query;
-      if (!error) setSkills(data || []);
-    } else {
-      let query = supabase
-        .from("profiles")
-        .select(`
-          id, name, department, bio, avatar_url, created_at,
-          user_skills (skill:skill_id (id, name, category))
-        `)
-        .neq("id", currentUser?.id ?? "00000000-0000-0000-0000-000000000000");
+  const leaderboard = useMemo(
+    () => tutors.filter((t) => t.reviewCount > 0).slice(0, 5),
+    [tutors],
+  );
 
-      if (searchQuery) {
-        query = query.ilike("name", `%${searchQuery}%`);
-      }
-      if (department !== "All") {
-        query = query.ilike("department", `%${department}%`);
-      }
-
-      const { data, error } = await query.order("created_at", { ascending: false }).limit(40);
-      if (!error) {
-        setUsers(data || []);
-        const depts = [...new Set((data || []).map((u) => u.department).filter(Boolean))];
-        setDepartments(["All", ...depts.slice(0, 8)]);
-      }
-    }
-
-    setLoading(false);
-  }, [supabase, view, skillType, category, searchQuery, department, sortBy, currentUser]);
-
-  useEffect(() => {
-    const t = setTimeout(fetchData, searchQuery ? 350 : 0);
-    return () => clearTimeout(t);
-  }, [fetchData, searchQuery]);
-
-  // ── Send session request ─────────────────────────────────────────────────
-  const handleRequest = async ({ skillId, providerId, scheduledTime, message }) => {
-    const { error } = await supabase.from("sessions").insert({
-      requester_id: currentUser.id,
-      provider_id: providerId,
-      skill_id: skillId,
-      status: "pending",
-      scheduled_time: scheduledTime || null,
-      message,
-    });
-    if (!error) {
-      setRequested((prev) => new Set([...prev, skillId]));
-      setRequestTarget(null);
-    }
-    return { error };
-  };
-
-  // ── Filter data for display ──────────────────────────────────────────────
-  const displaySkills = skills;
-  const displayUsers = users;
+  if (role === "tutor") {
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center"
+        style={{ background: "#0e0c0a" }}
+      >
+        <div className="flex items-center gap-2 text-sm" style={{ color: "#6a6050" }}>
+          <Loader2 size={14} className="animate-spin" />
+          Redirecting to profile...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen" style={{ background: "#0e0c0a" }}>
-      {/* Page header with search */}
-      <ExploreHeader
-        view={view}
-        onViewChange={setView}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-      />
+      <div
+        className="sticky top-0 z-20 border-b px-4 py-4 md:px-8"
+        style={{
+          background: "rgba(14,12,10,0.92)",
+          borderColor: "#1a1814",
+          backdropFilter: "blur(12px)",
+        }}
+      >
+        <div className="mx-auto max-w-6xl">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h1 className="text-xl font-medium" style={{ color: "#f5f0e8" }}>
+                Explore Tutors
+              </h1>
+              <p className="text-xs" style={{ color: "#6a6050" }}>
+                Find tutors by what they teach, view profile, chat, and read reviews.
+              </p>
+            </div>
+            <button
+              onClick={() => currentUser?.id && loadData(currentUser.id)}
+              className="rounded-xl border px-3 py-2 text-xs"
+              style={{ borderColor: "#2a2520", color: "#8a8070", background: "#141210" }}
+            >
+              Refresh
+            </button>
+          </div>
 
-      <div className="mx-auto max-w-6xl px-4 pb-12 md:px-8">
-        {/* Filter bar */}
-        <FilterBar
-          view={view}
-          category={category}
-          onCategoryChange={setCategory}
-          skillType={skillType}
-          onSkillTypeChange={setSkillType}
-          department={department}
-          onDepartmentChange={setDepartment}
-          departments={departments}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          categories={SKILL_CATEGORIES}
-          resultCount={view === "skills" ? displaySkills.length : displayUsers.length}
-        />
+          <div className="relative mt-3">
+            <Search
+              size={14}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+              style={{ color: "#4a4438" }}
+            />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search tutor or skill..."
+              className="w-full rounded-xl py-2.5 pl-9 pr-3 text-sm outline-none"
+              style={{ background: "#141210", border: "1px solid #2a2520", color: "#f5f0e8" }}
+            />
+          </div>
 
-        {/* Content */}
-        <div className="mt-6">
-          {loading ? (
-            <LoadingSkeleton view={view} />
-          ) : (
-            <AnimatePresence mode="wait">
-              {view === "skills" ? (
-                <motion.div
-                  key="skills"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {displaySkills.length === 0 ? (
-                    <EmptyExplore type="skills" query={searchQuery} onClear={() => { setSearchQuery(""); setCategory("All"); }} />
-                  ) : (
-                    <motion.div
-                      variants={STAGGER}
-                      initial="hidden"
-                      animate="visible"
-                      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+            {skillOptions.map((skill) => (
+              <button
+                key={skill}
+                onClick={() => setSelectedSkill(skill)}
+                className="shrink-0 rounded-xl px-3 py-1.5 text-xs"
+                style={
+                  selectedSkill === skill
+                    ? { background: "#e8b84b", color: "#0e0c0a" }
+                    : { background: "#141210", color: "#8a8070", border: "1px solid #2a2520" }
+                }
+              >
+                {skill}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-6xl px-4 pb-12 pt-5 md:px-8">
+        <div
+          className="rounded-2xl border p-4"
+          style={{ background: "#141210", borderColor: "#2a2520" }}
+        >
+          <div className="flex items-start gap-3">
+            <div
+              className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl"
+              style={{ background: "rgba(232,184,75,0.08)", border: "1px solid rgba(232,184,75,0.15)" }}
+            >
+              <Trophy size={16} style={{ color: "#e8b84b" }} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
+                Tutor leaderboard
+              </p>
+              <p className="mt-1 text-xs leading-relaxed" style={{ color: "#8a8070" }}>
+                Top tutors are ranked by rating × sessions taught, so students get a reliable starting point.
+              </p>
+              {leaderboard.length > 0 ? (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  {leaderboard.map((t, idx) => (
+                    <span
+                      key={t.id}
+                      className="rounded-lg px-2 py-1 text-xs"
+                      style={{
+                        background: "rgba(232,184,75,0.08)",
+                        border: "1px solid rgba(232,184,75,0.14)",
+                        color: "#e8b84b",
+                      }}
                     >
-                      {displaySkills.map((skill) => (
-                        <motion.div key={skill.id} variants={CARD_ANIM}>
-                          <SkillCard
-                            skill={skill}
-                            isRequested={requested.has(skill.id)}
-                            onRequest={() =>
-                              setRequestTarget({
-                                skill,
-                                provider: skill.user,
-                              })
-                            }
-                          />
-                        </motion.div>
-                      ))}
-                    </motion.div>
-                  )}
-                </motion.div>
+                      #{idx + 1} {t.name}
+                    </span>
+                  ))}
+                </div>
               ) : (
-                <motion.div
-                  key="people"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {displayUsers.length === 0 ? (
-                    <EmptyExplore type="people" query={searchQuery} onClear={() => { setSearchQuery(""); setDepartment("All"); }} />
-                  ) : (
-                    <motion.div
-                      variants={STAGGER}
-                      initial="hidden"
-                      animate="visible"
-                      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
-                    >
-                      {displayUsers.map((user) => (
-                        <motion.div key={user.id} variants={CARD_ANIM}>
-                          <UserCard
-                            user={user}
-                            currentUserId={currentUser?.id}
-                            onRequest={(skill) =>
-                              setRequestTarget({ skill, provider: user })
-                            }
-                          />
-                        </motion.div>
-                      ))}
-                    </motion.div>
-                  )}
-                </motion.div>
+                <div className="mt-2 text-xs" style={{ color: "#4a4438" }}>
+                  Ratings will appear once tutors receive reviews.
+                </div>
               )}
-            </AnimatePresence>
+            </div>
+          </div>
+        </div>
+
+        {myLearnSkills.length > 0 && (
+          <div className="mt-3 rounded-2xl border p-3" style={{ background: "#141210", borderColor: "#2a2520" }}>
+            <p className="mb-2 flex items-center gap-1 text-xs" style={{ color: "#8a8070" }}>
+              <Sparkles size={12} style={{ color: "#1d9e75" }} />
+              Matching your learning goals
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {myLearnSkills.map((s) => (
+                <span
+                  key={s}
+                  className="rounded-lg px-2 py-1 text-xs"
+                  style={{ background: "rgba(29,158,117,0.08)", color: "#6a6050", border: "1px solid rgba(29,158,117,0.16)" }}
+                >
+                  {s}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-5">
+          {loading ? (
+            <div className="flex items-center justify-center rounded-2xl border py-16" style={{ background: "#141210", borderColor: "#2a2520" }}>
+              <div className="flex items-center gap-2 text-sm" style={{ color: "#6a6050" }}>
+                <Loader2 size={14} className="animate-spin" />
+                Loading tutors...
+              </div>
+            </div>
+          ) : filteredTutors.length === 0 ? (
+            <div className="rounded-2xl border py-16 text-center" style={{ background: "#141210", borderColor: "#2a2520" }}>
+              <p className="text-sm font-medium" style={{ color: "#8a8070" }}>
+                No tutors found
+              </p>
+              <p className="mt-1 text-xs" style={{ color: "#4a4438" }}>
+                Try a different skill or search term.
+              </p>
+            </div>
+          ) : (
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              transition={{ staggerChildren: 0.05 }}
+              className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+            >
+              {filteredTutors.map((tutor) => (
+                <TutorCard key={tutor.id} tutor={tutor} onOpenReviews={setReviewsTutor} />
+              ))}
+            </motion.div>
           )}
         </div>
       </div>
 
-      {/* Request session modal */}
       <AnimatePresence>
-        {requestTarget && (
-          <RequestModal
-            skill={requestTarget.skill}
-            provider={requestTarget.provider}
-            onConfirm={handleRequest}
-            onClose={() => setRequestTarget(null)}
-          />
+        {reviewsTutor && (
+          <ReviewsModal tutor={reviewsTutor} onClose={() => setReviewsTutor(null)} />
         )}
       </AnimatePresence>
     </div>

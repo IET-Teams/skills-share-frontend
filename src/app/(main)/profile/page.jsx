@@ -4,20 +4,13 @@ import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createBrowserClient } from "@supabase/ssr";
-
-const createSupabaseClient = () =>
-  createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  );
+import { useRole } from "@/context/RoleContext";
 import {
   Edit2,
   MapPin,
   BookOpen,
   Calendar,
   Star,
-  GraduationCap,
-  Share2,
   User,
   CheckCircle2,
   Plus,
@@ -30,8 +23,32 @@ import {
   ArrowRight,
   XCircle,
   FileText,
-  Loader2 as Spin,
+  Wifi,
+  WifiOff,
+  BookMarked,
+  Award,
+  TrendingUp,
+  MessageSquare,
+  AlertCircle,
+  Zap,
+  Upload,
+  Download,
+  Trash2,
+  Shield,
+  Users,
+  ChevronDown,
+  Check,
 } from "lucide-react";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Supabase Client
+// ─────────────────────────────────────────────────────────────────────────────
+
+const createSupabaseClient = () =>
+  createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  );
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -66,97 +83,181 @@ const SKILL_SUGGESTIONS = [
   "TypeScript",
   "AWS",
   "MongoDB",
-];
-
-const YEARS = [
-  "1st Year",
-  "2nd Year",
-  "3rd Year",
-  "4th Year",
-  "PG 1st Year",
-  "PG 2nd Year",
+  "Django",
+  "Spring Boot",
+  "Swift",
+  "C++",
 ];
 
 const STATUS_CONFIG = {
   pending: {
-    icon: Clock,
     color: "#e8b84b",
     bg: "rgba(232,184,75,0.1)",
     label: "Pending",
+    icon: Clock,
   },
   accepted: {
-    icon: Loader2,
     color: "#60a5fa",
     bg: "rgba(96,165,250,0.1)",
-    label: "Accepted",
+    label: "Upcoming",
+    icon: Loader2,
   },
   completed: {
-    icon: CheckCircle2,
     color: "#1d9e75",
     bg: "rgba(29,158,117,0.1)",
     label: "Completed",
+    icon: CheckCircle2,
   },
   rejected: {
-    icon: XCircle,
     color: "#b05252",
     bg: "rgba(176,82,82,0.1)",
-    label: "Rejected",
+    label: "Declined",
+    icon: XCircle,
   },
 };
 
-const inputStyle = {
-  background: "#141210",
-  border: "1px solid #2a2520",
-  color: "#f5f0e8",
+const LEVEL_COLORS = {
+  Beginner: {
+    bg: "rgba(29,158,117,0.12)",
+    border: "rgba(29,158,117,0.3)",
+    text: "#1d9e75",
+    bar: "#1d9e75",
+    iconBg: "rgba(29,158,117,0.1)",
+    iconBorder: "rgba(29,158,117,0.25)",
+  },
+  Intermediate: {
+    bg: "rgba(232,184,75,0.12)",
+    border: "rgba(232,184,75,0.3)",
+    text: "#e8b84b",
+    bar: "#e8b84b",
+    iconBg: "rgba(232,184,75,0.1)",
+    iconBorder: "rgba(232,184,75,0.25)",
+  },
+  Advanced: {
+    bg: "rgba(192,132,252,0.12)",
+    border: "rgba(192,132,252,0.3)",
+    text: "#c084fc",
+    bar: "#c084fc",
+    iconBg: "rgba(192,132,252,0.1)",
+    iconBorder: "rgba(192,132,252,0.25)",
+  },
 };
 
+const LEVEL_PROGRESS = { Beginner: 30, Intermediate: 65, Advanced: 100 };
+
 // ─────────────────────────────────────────────────────────────────────────────
-// Animation variants
+// Animation Variants
 // ─────────────────────────────────────────────────────────────────────────────
 
 const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
+  hidden: { opacity: 0, y: 20 },
   visible: (i = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.5, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.45, delay: i * 0.07, ease: [0.22, 1, 0.36, 1] },
   }),
 };
 
-const fadeUpSm = {
-  hidden: { opacity: 0, y: 12 },
-  visible: (i = 0) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.35, delay: i * 0.06, ease: [0.22, 1, 0.36, 1] },
-  }),
+const fadeIn = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.3 } },
 };
 
-const slideVariants = {
-  enter: (dir) => ({ x: dir > 0 ? 40 : -40, opacity: 0 }),
-  center: {
-    x: 0,
-    opacity: 1,
-    transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
-  },
-  exit: (dir) => ({
-    x: dir > 0 ? -40 : 40,
-    opacity: 0,
-    transition: { duration: 0.25 },
-  }),
-};
+
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared tiny components
+// Shared UI Primitives
 // ─────────────────────────────────────────────────────────────────────────────
 
-function StarRow({ score }) {
+function Avatar({
+  url,
+  name,
+  size = 9,
+  textSize = "xs",
+  radius = "xl",
+  border = false,
+}) {
+  const initials = (name || "?")
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+  const cls = `flex shrink-0 items-center justify-center font-medium`;
+  const style = {
+    width: `${size * 4}px`,
+    height: `${size * 4}px`,
+    borderRadius:
+      radius === "full" ? "9999px" : radius === "xl" ? "12px" : "8px",
+    background: "rgba(232,184,75,0.1)",
+    color: "#e8b84b",
+    fontSize: textSize === "xs" ? "12px" : textSize === "sm" ? "14px" : "16px",
+    border: border ? "1px solid #2a2520" : "none",
+  };
+  return url ? (
+    <img src={url} alt={name} style={{ ...style, objectFit: "cover" }} />
+  ) : (
+    <div className={cls} style={style}>
+      {initials}
+    </div>
+  );
+}
+
+function SectionCard({ children, className = "" }) {
+  return (
+    <div
+      className={`rounded-2xl border ${className}`}
+      style={{ background: "#0a0908", borderColor: "#2a2520" }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SectionHeader({ icon: Icon, title, action }) {
+  return (
+    <div className="flex items-center justify-between px-5 pt-5 pb-3">
+      <div className="flex items-center gap-2">
+        {Icon && <Icon size={14} style={{ color: "#e8b84b" }} />}
+        <span className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
+          {title}
+        </span>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function EmptyState({ icon: Icon, title, subtitle, action }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-10 text-center">
+      <div
+        className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl"
+        style={{
+          background: "rgba(232,184,75,0.08)",
+          border: "1px solid rgba(232,184,75,0.15)",
+        }}
+      >
+        <Icon size={20} style={{ color: "#e8b84b" }} />
+      </div>
+      <p className="mb-1 text-sm font-medium" style={{ color: "#8a8070" }}>
+        {title}
+      </p>
+      <p className="text-xs mb-3" style={{ color: "#4a4438" }}>
+        {subtitle}
+      </p>
+      {action}
+    </div>
+  );
+}
+
+function StarRow({ score, size = 12 }) {
   return (
     <div className="flex gap-0.5">
       {[1, 2, 3, 4, 5].map((i) => (
         <Star
           key={i}
-          size={12}
+          size={size}
           style={{
             color: i <= score ? "#e8b84b" : "#2a2520",
             fill: i <= score ? "#e8b84b" : "transparent",
@@ -167,1646 +268,1775 @@ function StarRow({ score }) {
   );
 }
 
-function Avatar({ url, name, size = 9, textSize = "xs", radius = "xl" }) {
-  const initials = (name || "?")
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-  const cls = `flex h-${size} w-${size} shrink-0 items-center justify-center rounded-${radius} text-${textSize} font-medium`;
-  return url ? (
-    <img
-      src={url}
-      alt={name}
-      className={`h-${size} w-${size} rounded-${radius} object-cover`}
-    />
-  ) : (
-    <div
-      className={cls}
-      style={{ background: "rgba(232,184,75,0.1)", color: "#e8b84b" }}
-    >
-      {initials}
-    </div>
-  );
-}
-
-function FieldLabel({ icon: Icon, label }) {
-  return (
-    <label
-      className="mb-1.5 flex items-center gap-1.5 text-xs font-medium"
-      style={{ color: "#8a8070" }}
-    >
-      {Icon && <Icon size={11} />}
-      {label}
-    </label>
-  );
+function Divider() {
+  return <div className="h-px w-full" style={{ background: "#1a1814" }} />;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ProfileHero
+// Profile Hero
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ProfileHero({
   profile,
   user,
-  skillCount,
-  sessionCount,
+  role,
+  completedCount,
   avgRating,
+  totalSessions,
+  isAvailable,
+  onAvailabilityToggle,
   onEdit,
   isOwnProfile,
 }) {
-  const [copied, setCopied] = useState(false);
-
   const name = profile?.name || user?.email?.split("@")[0] || "Student";
-  const initials = name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-
-  const stats = [
-    { icon: BookOpen, label: "Skills", value: skillCount || 0 },
-    { icon: Calendar, label: "Sessions", value: sessionCount || 0 },
-    { icon: Star, label: "Rating", value: avgRating || "—" },
-  ];
+  const joinedDate = profile?.created_at
+    ? new Date(profile.created_at).toLocaleDateString("en-US", {
+        month: "short",
+        year: "numeric",
+      })
+    : null;
 
   return (
     <div
-      className="relative overflow-hidden rounded-2xl border"
+      className="relative overflow-hidden rounded-2xl border p-5 md:p-6"
       style={{ background: "#0a0908", borderColor: "#2a2520" }}
     >
-      {/* Header band */}
-      <div
-        className="absolute inset-x-0 top-0 h-28 opacity-30"
-        style={{
-          background: "linear-gradient(180deg, #1a1610 0%, #0a0908 100%)",
-        }}
-      />
-
-      <div className="relative px-6 pb-6 pt-16">
-        {/* Actions */}
-        <div className="absolute right-5 top-5 flex gap-2">
+      {/* Top row: edit button */}
+      {isOwnProfile && (
+        <div className="absolute top-4 right-4 flex items-center gap-2">
           <motion.button
             whileTap={{ scale: 0.97 }}
-            onClick={() => {
-              if (navigator.clipboard) {
-                navigator.clipboard.writeText(`${window.location.origin}/profile?id=${profile?.id}`);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              }
-            }}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border transition-colors"
-            style={{
-              background: copied ? "rgba(29,158,117,0.1)" : "rgba(255,255,255,0.04)",
-              borderColor: copied ? "rgba(29,158,117,0.2)" : "#2a2520",
-            }}
+            onClick={onEdit}
+            className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-white/5 transition-colors"
+            style={{ borderColor: "rgba(232,184,75,0.2)", color: "#e8b84b" }}
           >
-            {copied ? <CheckCircle2 size={13} style={{ color: "#1d9e75" }} /> : <Share2 size={13} style={{ color: "#8a8070" }} />}
+            <Edit2 size={11} /> Edit
           </motion.button>
-          {isOwnProfile && (
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={onEdit}
-              className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium"
-              style={{
-                background: "rgba(232,184,75,0.08)",
-                borderColor: "rgba(232,184,75,0.2)",
-                color: "#e8b84b",
-              }}
-            >
-              <Edit2 size={11} /> Edit profile
-            </motion.button>
-          )}
         </div>
+      )}
 
-        {/* Avatar + name */}
-        <div className="flex items-end gap-4">
-          <div className="relative">
+      <div className="flex flex-col gap-5">
+        {/* Avatar + Identity */}
+        <div className="flex items-start gap-4 pr-20">
+          <div className="relative shrink-0">
             {profile?.avatar_url ? (
               <img
                 src={profile.avatar_url}
                 alt={name}
                 className="h-20 w-20 rounded-2xl object-cover"
-                style={{ border: "3px solid #1a1814" }}
+                style={{ border: "2px solid #2a2520" }}
               />
             ) : (
               <div
-                className="flex h-20 w-20 items-center justify-center rounded-2xl text-xl font-medium"
+                className="flex h-20 w-20 items-center justify-center rounded-2xl text-2xl font-medium"
                 style={{
-                  background:
-                    "linear-gradient(135deg,rgba(232,184,75,0.2) 0%,rgba(232,184,75,0.05) 100%)",
-                  border: "3px solid #1a1814",
+                  background: "#141210",
+                  border: "1px solid #2a2520",
                   color: "#e8b84b",
                 }}
               >
-                {initials}
+                {name
+                  .split(" ")
+                  .map((w) => w[0])
+                  .join("")
+                  .toUpperCase()
+                  .slice(0, 2)}
               </div>
             )}
-            <span
-              className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2"
-              style={{ background: "#1d9e75", borderColor: "#0a0908" }}
-            />
+            {/* Online indicator */}
+            <div
+              className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 flex items-center justify-center"
+              style={{ background: "#0a0908", borderColor: "#0a0908" }}
+            >
+              <div
+                className="h-2 w-2 rounded-full"
+                style={{ background: "#1d9e75" }}
+              />
+            </div>
           </div>
-          <div className="pb-1">
-            <h1 className="text-xl font-medium" style={{ color: "#f5f0e8" }}>
+
+          <div className="flex-1 min-w-0 pt-1">
+            <h1
+              className="text-xl font-medium leading-tight"
+              style={{ color: "#f5f0e8" }}
+            >
               {name}
             </h1>
-            <div className="mt-1 flex flex-wrap items-center gap-3">
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
               {profile?.department && (
                 <span
                   className="flex items-center gap-1 text-xs"
                   style={{ color: "#8a8070" }}
                 >
-                  <GraduationCap size={11} />
-                  {profile.department}
+                  <BookMarked size={10} /> {profile.department}
                 </span>
               )}
               {profile?.location && (
                 <span
                   className="flex items-center gap-1 text-xs"
-                  style={{ color: "#6a6050" }}
+                  style={{ color: "#8a8070" }}
                 >
-                  <MapPin size={11} />
-                  {profile.location}
+                  <MapPin size={10} /> {profile.location}
+                </span>
+              )}
+              {joinedDate && (
+                <span
+                  className="flex items-center gap-1 text-xs"
+                  style={{ color: "#8a8070" }}
+                >
+                  <Calendar size={10} /> Joined {joinedDate}
                 </span>
               )}
             </div>
-          </div>
-        </div>
-
-        {/* Bio */}
-        {profile?.bio ? (
-          <p
-            className="mt-4 max-w-xl text-sm leading-relaxed"
-            style={{ color: "#8a8070" }}
-          >
-            {profile.bio}
-          </p>
-        ) : (
-          <p
-            className="mt-4 cursor-pointer text-sm italic"
-            style={{ color: "#3a342c" }}
-            onClick={onEdit}
-          >
-            No bio yet — click Edit profile to add one
-          </p>
-        )}
-
-        <div className="my-5" style={{ borderTop: "1px solid #1a1814" }} />
-
-        {/* Stats */}
-        <div className="flex gap-8">
-          {stats.map(({ icon: Icon, label, value }) => (
-            <div key={label} className="flex items-center gap-2">
-              <Icon size={14} style={{ color: "#e8b84b" }} />
-              <div>
-                <p
-                  className="text-base font-medium"
-                  style={{ color: "#f5f0e8" }}
-                >
-                  {value}
-                </p>
-                <p className="text-xs" style={{ color: "#6a6050" }}>
-                  {label}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SkillsSection
-// ─────────────────────────────────────────────────────────────────────────────
-
-function SkillPill({ skill, type, onRemove }) {
-  const isTeach = type === "teach";
-  return (
-    <motion.div
-      layout
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      exit={{ scale: 0.8, opacity: 0 }}
-      className="group flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium"
-      style={{
-        background: isTeach ? "rgba(232,184,75,0.08)" : "rgba(29,158,117,0.08)",
-        color: isTeach ? "#e8b84b" : "#1d9e75",
-        border: `1px solid ${isTeach ? "rgba(232,184,75,0.15)" : "rgba(29,158,117,0.15)"}`,
-      }}
-    >
-      {skill.name}
-      {onRemove && (
-        <button
-          onClick={() => onRemove(skill.id)}
-          className="opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity"
-        >
-          <X size={10} />
-        </button>
-      )}
-    </motion.div>
-  );
-}
-
-function SkillsSection({ skills, userId, onSkillsChange, isOwnProfile }) {
-  const supabase = createSupabaseClient();
-  const [adding, setAdding] = useState(null);
-  const [input, setInput] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const teachSkills = skills.filter((s) => s.category === "Teaching");
-  const learnSkills = skills.filter((s) => s.category === "Learning");
-
-  const handleAdd = async (type) => {
-    const val = input.trim();
-    if (!val) return;
-    setSaving(true);
-    
-    // 1. Ensure skill exists in master list
-    let { data: skillData, error: skillError } = await supabase
-      .from("skills")
-      .select("*")
-      .eq("name", val)
-      .maybeSingle();
-      
-    if (!skillData && !skillError) {
-      const { data: newSkill, error: createError } = await supabase
-        .from("skills")
-        .insert({ name: val, category: type === "teach" ? "Teaching" : "Learning" })
-        .select()
-        .single();
-      skillData = newSkill;
-      skillError = createError;
-    }
-
-    // 2. Link user to skill
-    if (skillData && !skillError) {
-      const { error: linkError } = await supabase
-        .from("user_skills")
-        .upsert({ user_id: userId, skill_id: skillData.id });
-      
-      if (!linkError) {
-        onSkillsChange((prev) => {
-          if (prev.find(s => s.id === skillData.id)) return prev;
-          return [skillData, ...prev];
-        });
-      }
-    }
-    
-    setInput("");
-    setSaving(false);
-  };
-
-  const handleRemove = async (skillId) => {
-    await supabase
-      .from("user_skills")
-      .delete()
-      .eq("user_id", userId)
-      .eq("skill_id", skillId);
-    onSkillsChange((prev) => prev.filter((s) => s.id !== skillId));
-  };
-
-  const addFromSuggestion = async (name, type) => {
-    if (skills.find((s) => s.name === name)) return;
-    
-    let { data: skillData } = await supabase
-      .from("skills")
-      .select("*")
-      .eq("name", name)
-      .maybeSingle();
-
-    if (!skillData) {
-      const { data: newSkill } = await supabase
-        .from("skills")
-        .insert({ name, category: type === "teach" ? "Teaching" : "Learning" })
-        .select()
-        .single();
-      skillData = newSkill;
-    }
-
-    if (skillData) {
-      await supabase
-        .from("user_skills")
-        .upsert({ user_id: userId, skill_id: skillData.id });
-      
-      onSkillsChange((prev) => [skillData, ...prev]);
-    }
-  };
-
-  const usedNames = skills.map((s) => s.name);
-  const suggestions = SKILL_SUGGESTIONS.filter((s) => !usedNames.includes(s));
-
-  const renderSkillBlock = ({ type, list, accentColor, borderColor, emptyMsg }) => {
-    const isTeach = type === "teach";
-    return (
-      <div
-        className="rounded-2xl border p-5"
-        style={{ background: "#0a0908", borderColor: "#2a2520" }}
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {isTeach ? (
-              <BookOpen size={14} style={{ color: accentColor }} />
-            ) : (
-              <Sparkles size={14} style={{ color: accentColor }} />
+            {profile?.bio && (
+              <p
+                className="mt-2.5 text-xs leading-relaxed"
+                style={{ color: "#6a6050" }}
+              >
+                {profile.bio}
+              </p>
             )}
-            <span className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
-              {isTeach ? (isOwnProfile ? "Skills I teach" : "Skills they teach") : (isOwnProfile ? "Skills I want to learn" : "Skills they want to learn")}
-            </span>
-            <span
-              className="rounded-full px-2 py-0.5 text-xs"
-              style={{ background: `${accentColor}14`, color: "#8a8070" }}
-            >
-              {list.length}
-            </span>
           </div>
-          {isOwnProfile && (
+        </div>
+
+        <Divider />
+
+        {/* Stats row */}
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <div
+              className="flex h-7 w-7 items-center justify-center rounded-lg"
+              style={{ background: "rgba(232,184,75,0.07)" }}
+            >
+              <CheckCircle2 size={13} style={{ color: "#e8b84b" }} />
+            </div>
+            <div>
+              <p
+                className="text-sm font-medium leading-none"
+                style={{ color: "#f5f0e8" }}
+              >
+                {completedCount || 0}
+              </p>
+              <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>
+                Sessions
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div
+              className="flex h-7 w-7 items-center justify-center rounded-lg"
+              style={{ background: "rgba(232,184,75,0.07)" }}
+            >
+              <Star size={13} style={{ color: "#e8b84b" }} />
+            </div>
+            <div>
+              <p
+                className="text-sm font-medium leading-none"
+                style={{ color: "#f5f0e8" }}
+              >
+                {avgRating || "—"}
+              </p>
+              <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>
+                Rating
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div
+              className="flex h-7 w-7 items-center justify-center rounded-lg"
+              style={{ background: "rgba(232,184,75,0.07)" }}
+            >
+              <Users size={13} style={{ color: "#e8b84b" }} />
+            </div>
+            <div>
+              <p
+                className="text-sm font-medium leading-none"
+                style={{ color: "#f5f0e8" }}
+              >
+                {totalSessions || 0}
+              </p>
+              <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>
+                Total
+              </p>
+            </div>
+          </div>
+
+          {/* Availability toggle — tutor only */}
+          {isOwnProfile && role === "tutor" && (
             <motion.button
               whileTap={{ scale: 0.97 }}
-              onClick={() => setAdding(adding === type ? null : type)}
-              className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium"
+              onClick={onAvailabilityToggle}
+              className="ml-auto flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all"
               style={{
-                background: adding === type ? `${accentColor}18` : "transparent",
-                color: accentColor,
-                border: `1px solid ${borderColor}`,
+                background: isAvailable
+                  ? "rgba(29,158,117,0.1)"
+                  : "transparent",
+                borderColor: isAvailable ? "rgba(29,158,117,0.35)" : "#2a2520",
+                color: isAvailable ? "#1d9e75" : "#6a6050",
               }}
             >
-              <Plus size={11} /> Add skill
+              {isAvailable ? (
+                <>
+                  <div className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
+                  Available
+                </>
+              ) : (
+                <>
+                  <WifiOff size={9} />
+                  Unavailable
+                </>
+              )}
             </motion.button>
           )}
         </div>
-
-        <AnimatePresence>
-          {adding === type && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="mb-4 overflow-hidden"
-            >
-              <div className="flex gap-2">
-                <input
-                  autoFocus
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleAdd(type);
-                    if (e.key === "Escape") setAdding(null);
-                  }}
-                  placeholder="Skill name…"
-                  className="flex-1 rounded-xl px-3 py-2 text-sm outline-none"
-                  style={{
-                    background: "#141210",
-                    border: `1px solid ${borderColor}`,
-                    color: "#f5f0e8",
-                  }}
-                />
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => handleAdd(type)}
-                  disabled={saving || !input.trim()}
-                  className="rounded-xl px-4 text-sm font-medium"
-                  style={
-                    isTeach
-                      ? { background: "#e8b84b", color: "#0e0c0a" }
-                      : {
-                          background: "rgba(29,158,117,0.15)",
-                          color: "#1d9e75",
-                          border: `1px solid ${borderColor}`,
-                        }
-                  }
-                >
-                  {saving ? "…" : "Add"}
-                </motion.button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="flex flex-wrap gap-2 min-h-[2rem]">
-          <AnimatePresence>
-            {list.length > 0 ? (
-              list.map((s) => (
-                <SkillPill
-                  key={s.id}
-                  skill={s}
-                  type={type}
-                  onRemove={isOwnProfile ? handleRemove : null}
-                />
-              ))
-            ) : (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-sm italic"
-                style={{ color: "#3a342c" }}
-              >
-                {emptyMsg}
-              </motion.p>
-            )}
-          </AnimatePresence>
-        </div>
       </div>
-    );
-  };
-
-  return (
-    <div className="space-y-5">
-      {renderSkillBlock({
-        type: "teach",
-        list: teachSkills,
-        accentColor: "#e8b84b",
-        borderColor: "rgba(232,184,75,0.2)",
-        emptyMsg: "No teaching skills yet",
-      })}
-      {renderSkillBlock({
-        type: "learn",
-        list: learnSkills,
-        accentColor: "#1d9e75",
-        borderColor: "rgba(29,158,117,0.2)",
-        emptyMsg: "No learning goals yet",
-      })}
-
-      {isOwnProfile && suggestions.length > 0 && (
-        <div
-          className="rounded-2xl border p-4"
-          style={{ background: "#0a0908", borderColor: "#2a2520" }}
-        >
-          <p className="mb-3 text-xs" style={{ color: "#4a4438" }}>
-            Quick-add popular skills
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {suggestions.slice(0, 10).map((s) => (
-              <div key={s} className="flex items-center gap-1">
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => addFromSuggestion(s, "teach")}
-                  className="rounded-lg px-2.5 py-1 text-xs hover:border-[#4a4438] transition-colors"
-                  style={{
-                    background: "#141210",
-                    color: "#6a6050",
-                    border: "1px solid #2a2520",
-                  }}
-                  title="Add as teach"
-                >
-                  {s} <span style={{ color: "#e8b84b" }}>↑</span>
-                </motion.button>
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => addFromSuggestion(s, "learn")}
-                  className="rounded-lg px-2 py-1 text-xs hover:border-[#4a4438] transition-colors"
-                  style={{
-                    background: "#141210",
-                    color: "#6a6050",
-                    border: "1px solid #2a2520",
-                  }}
-                  title="Add as learn"
-                >
-                  <span style={{ color: "#1d9e75" }}>↓</span>
-                </motion.button>
-              </div>
-            ))}
-          </div>
-          <p className="mt-2 text-xs" style={{ color: "#3a342c" }}>
-            ↑ teach · ↓ learn
-          </p>
-        </div>
-      )}
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SessionHistory
+// Tutor First-Time Setup Prompt
 // ─────────────────────────────────────────────────────────────────────────────
 
-function SessionCard({ session, userId, index }) {
-  const isRequester = session.requester_id === userId;
-  const other = isRequester ? session.provider : session.requester;
-  const otherName = other?.name || "Unknown";
-  const skillName = session.skill?.skill_name || "Session";
-  const cfg = STATUS_CONFIG[session.status] || STATUS_CONFIG.pending;
-  const StatusIcon = cfg.icon;
-  const initials = otherName
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-  const date = new Date(
-    session.scheduled_time || session.created_at,
-  ).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-
+function TutorSetupPrompt({ onDismiss, onSetup }) {
   return (
     <motion.div
-      variants={fadeUpSm}
-      custom={index}
+      variants={fadeUp}
       initial="hidden"
       animate="visible"
-      className="flex items-center justify-between rounded-xl px-4 py-3.5 transition-colors"
-      style={{ border: "1px solid #1e1c18" }}
-      whileHover={{
-        borderColor: "#2a2520",
-        background: "rgba(232,184,75,0.02)",
-      }}
+      className="rounded-2xl border overflow-hidden"
+      style={{ background: "#0a0908", borderColor: "rgba(232,184,75,0.25)" }}
     >
-      <div className="flex items-center gap-3">
-        {other?.avatar_url ? (
-          <img
-            src={other.avatar_url}
-            alt={otherName}
-            className="h-9 w-9 rounded-xl object-cover"
-          />
-        ) : (
+      <div className="p-5">
+        <div className="flex items-start gap-4">
           <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-medium"
-            style={{ background: "rgba(232,184,75,0.08)", color: "#e8b84b" }}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+            style={{
+              background: "rgba(232,184,75,0.12)",
+              border: "1px solid rgba(232,184,75,0.2)",
+            }}
           >
-            {initials}
+            <Sparkles size={18} style={{ color: "#e8b84b" }} />
           </div>
-        )}
-        <div>
-          <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
-            {skillName}
-          </p>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-xs" style={{ color: "#6a6050" }}>
-              {isRequester ? "Learning from" : "Teaching"}
-            </span>
-            <ArrowRight size={10} style={{ color: "#3a342c" }} />
-            <span className="text-xs" style={{ color: "#8a8070" }}>
-              {otherName}
-            </span>
+          <div className="flex-1">
+            <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
+              Set up your tutor profile
+            </p>
+            <p
+              className="mt-1 text-xs leading-relaxed"
+              style={{ color: "#6a6050" }}
+            >
+              Add the skills you can teach so students can find and request
+              sessions with you.
+            </p>
           </div>
         </div>
-      </div>
-      <div className="flex items-center gap-3">
-        <span className="text-xs hidden sm:block" style={{ color: "#4a4438" }}>
-          {date}
-        </span>
-        <div
-          className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
-          style={{ background: cfg.bg, color: cfg.color }}
-        >
-          <StatusIcon size={10} />
-          {cfg.label}
+        <div className="mt-4 flex gap-2">
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={onSetup}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium"
+            style={{ background: "#e8b84b", color: "#0e0c0a" }}
+          >
+            <Plus size={14} /> Add Teaching Skills
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={onDismiss}
+            className="rounded-xl border px-4 py-2.5 text-sm"
+            style={{ borderColor: "#2a2520", color: "#6a6050" }}
+          >
+            Later
+          </motion.button>
         </div>
       </div>
     </motion.div>
   );
 }
 
-function SessionHistory({ sessions, userId, isOwnProfile }) {
-  if (!sessions || sessions.length === 0) {
-    return (
-      <div
-        className="flex flex-col items-center justify-center rounded-2xl border py-16 text-center"
-        style={{ background: "#0a0908", borderColor: "#2a2520" }}
-      >
-        <Calendar size={28} style={{ color: "#2a2520" }} />
-        <p className="mt-3 text-sm font-medium" style={{ color: "#3a342c" }}>
-          No sessions yet
-        </p>
-        {isOwnProfile && (
-          <>
-            <p className="mt-1 text-xs" style={{ color: "#2a2520" }}>
-              Explore skills and request your first session
-            </p>
-            <motion.a
-              href="/explore"
-              whileTap={{ scale: 0.97 }}
-              className="mt-4 rounded-xl px-4 py-2 text-xs font-medium"
+//─────────────────────────────────────────────────────────────────────────────
+// Streak calculator — counts consecutive days with a completed session
+// ─────────────────────────────────────────────────────────────────────────────
+ 
+function calcStreak(sessions) {
+  const days = [
+    ...new Set(
+      sessions
+        .filter((s) => s.status === "completed")
+        .map((s) => new Date(s.created_at).toDateString())
+    ),
+  ];
+  let count = 0;
+  const today = new Date();
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    if (days.includes(d.toDateString())) count++;
+    else if (i > 0) break;
+  }
+  return count;
+}
+ 
+// ─────────────────────────────────────────────────────────────────────────────
+// SkillProgressCard — one card per learning skill
+// ─────────────────────────────────────────────────────────────────────────────
+ 
+function SkillProgressCard({ skill, sessCount, assessments, nextSession, index }) {
+  const level = skill.proficiency_level || "Beginner";
+  const col = LEVEL_COLORS[level] || LEVEL_COLORS.Beginner;
+  const progress = LEVEL_PROGRESS[level] || 28;
+ 
+  // Latest assessment score for this skill
+  const skillAssessments = (assessments || []).filter(
+    (a) => a.skill_name?.toLowerCase() === skill.skill_name?.toLowerCase()
+  );
+  const latestScore =
+    skillAssessments.length > 0
+      ? skillAssessments[skillAssessments.length - 1].score
+      : null;
+ 
+  const hasNoAssessment = skillAssessments.length === 0;
+ 
+  const nextDateStr = nextSession?.scheduled_time
+    ? new Date(nextSession.scheduled_time).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      })
+    : null;
+ 
+  return (
+    <motion.div
+      key={skill.id || index}
+      variants={fadeUp}
+      initial="hidden"
+      animate="visible"
+      custom={index}
+      className="rounded-2xl border overflow-hidden"
+      style={{ background: "#141210", borderColor: "#2a2520" }}
+    >
+      {/* ── Top section ── */}
+      <div className="p-3.5">
+        {/* Header row: icon + name + level badge + score */}
+        <div className="flex items-start justify-between gap-2 mb-3">
+          <div className="flex items-start gap-2.5">
+            {/* Colored icon box */}
+            <div
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
               style={{
-                background: "rgba(232,184,75,0.08)",
-                color: "#e8b84b",
-                border: "1px solid rgba(232,184,75,0.15)",
+                background: col.iconBg,
+                border: `1px solid ${col.iconBorder}`,
               }}
             >
-              Explore skills
-            </motion.a>
-          </>
-        )}
-      </div>
-    );
-  }
-
-  const completed = sessions.filter((s) => s.status === "completed");
-  const active = sessions.filter((s) => s.status !== "completed");
-
-  return (
-    <div
-      className="rounded-2xl border overflow-hidden"
-      style={{ background: "#0a0908", borderColor: "#2a2520" }}
-    >
-      <div
-        className="flex items-center justify-between px-5 py-4"
-        style={{ borderBottom: "1px solid #1a1814" }}
-      >
-        <div className="flex items-center gap-2">
-          <Calendar size={14} style={{ color: "#e8b84b" }} />
-          <span className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
-            Sessions
-          </span>
-        </div>
-        <div className="flex gap-3">
-          <span className="text-xs" style={{ color: "#4a4438" }}>
-            {completed.length} completed
-          </span>
-          <span className="text-xs" style={{ color: "#4a4438" }}>
-            {active.length} active
-          </span>
-        </div>
-      </div>
-      <div className="space-y-1.5 p-3">
-        {sessions.map((s, i) => (
-          <SessionCard key={s.id} session={s} userId={userId} index={i} />
-        ))}
-      </div>
-      <div className="px-5 py-3" style={{ borderTop: "1px solid #1a1814" }}>
-        <a href="/sessions" className="text-xs" style={{ color: "#6a6050" }}>
-          View all sessions →
-        </a>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// RatingsSection
-// ─────────────────────────────────────────────────────────────────────────────
-
-function RatingBar({ score, count, total }) {
-  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-  return (
-    <div className="flex items-center gap-2">
-      <span className="w-4 text-right text-xs" style={{ color: "#6a6050" }}>
-        {score}
-      </span>
-      <div
-        className="flex-1 h-1.5 rounded-full overflow-hidden"
-        style={{ background: "#1a1814" }}
-      >
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${pct}%` }}
-          transition={{
-            duration: 0.6,
-            delay: score * 0.05,
-            ease: [0.22, 1, 0.36, 1],
-          }}
-          className="h-full rounded-full"
-          style={{ background: "#e8b84b" }}
-        />
-      </div>
-      <span className="w-4 text-xs" style={{ color: "#4a4438" }}>
-        {count}
-      </span>
-    </div>
-  );
-}
-
-function RatingsSection({ ratings, avgRating }) {
-  if (!ratings || ratings.length === 0) {
-    return (
-      <div
-        className="flex flex-col items-center justify-center rounded-2xl border py-16 text-center"
-        style={{ background: "#0a0908", borderColor: "#2a2520" }}
-      >
-        <Star size={28} style={{ color: "#2a2520" }} />
-        <p className="mt-3 text-sm font-medium" style={{ color: "#3a342c" }}>
-          No ratings yet
-        </p>
-        <p className="mt-1 text-xs" style={{ color: "#2a2520" }}>
-          Complete sessions to start receiving ratings
-        </p>
-      </div>
-    );
-  }
-
-  const dist = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-  ratings.forEach((r) => {
-    if (dist[r.score] !== undefined) dist[r.score]++;
-  });
-
-  return (
-    <div className="space-y-4">
-      {/* Summary */}
-      <div
-        className="rounded-2xl border p-5"
-        style={{ background: "#0a0908", borderColor: "#2a2520" }}
-      >
-        <div className="flex items-start gap-8">
-          <div className="text-center">
-            <p className="text-4xl font-medium" style={{ color: "#f5f0e8" }}>
-              {avgRating}
-            </p>
-            <div className="mt-1 flex justify-center">
-              <StarRow score={Math.round(parseFloat(avgRating))} />
+              <BookOpen size={14} style={{ color: col.text }} />
             </div>
-            <p className="mt-1 text-xs" style={{ color: "#6a6050" }}>
-              {ratings.length} {ratings.length === 1 ? "review" : "reviews"}
-            </p>
-          </div>
-          <div className="flex-1 space-y-2">
-            {[5, 4, 3, 2, 1].map((score) => (
-              <RatingBar
-                key={score}
-                score={score}
-                count={dist[score]}
-                total={ratings.length}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Individual reviews */}
-      <div
-        className="rounded-2xl border overflow-hidden"
-        style={{ background: "#0a0908", borderColor: "#2a2520" }}
-      >
-        <div
-          className="px-5 py-4"
-          style={{ borderBottom: "1px solid #1a1814" }}
-        >
-          <span className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
-            Reviews
-          </span>
-        </div>
-        <div className="divide-y" style={{ borderColor: "#1a1814" }}>
-          {ratings.map((r, i) => {
-            const name = r.rater?.name || "Student";
-            const initials = name
-              .split(" ")
-              .map((w) => w[0])
-              .join("")
-              .toUpperCase()
-              .slice(0, 2);
-            const date = new Date(r.created_at).toLocaleDateString("en-IN", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            });
-            return (
-              <motion.div
-                key={r.id}
-                variants={fadeUpSm}
-                custom={i}
-                initial="hidden"
-                animate="visible"
-                className="px-5 py-4"
+ 
+            <div>
+              <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
+                {skill.skill_name}
+              </p>
+              {/* Level badge */}
+              <span
+                className="mt-1 inline-block rounded-md px-2 py-0.5 text-[9px] font-semibold tracking-wide"
+                style={{
+                  background: col.bg,
+                  border: `1px solid ${col.border}`,
+                  color: col.text,
+                  letterSpacing: "0.05em",
+                }}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2.5">
-                    {r.rater?.avatar_url ? (
-                      <img
-                        src={r.rater.avatar_url}
-                        alt={name}
-                        className="h-8 w-8 rounded-xl object-cover"
-                      />
-                    ) : (
-                      <div
-                        className="flex h-8 w-8 items-center justify-center rounded-xl text-xs font-medium"
-                        style={{
-                          background: "rgba(232,184,75,0.08)",
-                          color: "#e8b84b",
-                        }}
-                      >
-                        {initials}
-                      </div>
-                    )}
-                    <div>
-                      <p
-                        className="text-sm font-medium"
-                        style={{ color: "#f5f0e8" }}
-                      >
-                        {name}
-                      </p>
-                      <StarRow score={r.score} />
-                    </div>
-                  </div>
-                  <span className="text-xs" style={{ color: "#4a4438" }}>
-                    {date}
-                  </span>
-                </div>
-                {r.feedback && (
-                  <p
-                    className="mt-3 text-sm leading-relaxed"
-                    style={{ color: "#8a8070" }}
-                  >
-                    "{r.feedback}"
-                  </p>
-                )}
-              </motion.div>
-            );
-          })}
+                {level.toUpperCase()}
+              </span>
+            </div>
+          </div>
+ 
+          {/* Latest assessment score — top right */}
+          {latestScore !== null && (
+            <div className="text-right shrink-0">
+              <p
+                className="text-lg font-medium leading-none"
+                style={{ color: col.text }}
+              >
+                {latestScore}%
+              </p>
+              <p className="mt-1 text-[9px]" style={{ color: "#6a6050" }}>
+                last score
+              </p>
+            </div>
+          )}
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ProfileEditModal
-// ─────────────────────────────────────────────────────────────────────────────
-
-function ProfileEditModal({ profile, onSave, onClose }) {
-  const [form, setForm] = useState({
-    name: profile?.name || "",
-    department: profile?.department || "",
-    bio: profile?.bio || "",
-    location: profile?.location || "",
-    location: profile?.location || "",
-  });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
-
-  const handleSave = async () => {
-    
-    if (!form.name.trim()) {
-      setError("Name is required");
-      return;
-    }
-    setSaving(true);
-    setError("");
-    const { error: err } = await onSave(form);
-    if (err) setError("Failed to save. Please try again.");
-    setSaving(false);
-  };
-
-  const focusGold = (e) => (e.target.style.borderColor = "#e8b84b");
-  const blurReset = (e) => (e.target.style.borderColor = "#2a2520");
-
-  return (
-    <>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="fixed inset-0 z-40"
-        style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
-      />
-
-      <motion.div
-        initial={{ y: "100%", opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: "100%", opacity: 0 }}
-        transition={{ type: "spring", damping: 28, stiffness: 260 }}
-        className="fixed bottom-0 left-0 right-0 z-50 mx-auto max-w-lg rounded-t-3xl"
-        style={{
-          background: "#0a0908",
-          border: "1px solid #2a2520",
-          borderBottom: "none",
-        }}
-      >
-        <div className="flex justify-center pt-3 pb-1">
-          <div
-            className="h-1 w-10 rounded-full"
-            style={{ background: "#2a2520" }}
+ 
+        {/* Progress bar */}
+        <div
+          className="h-1 w-full rounded-full overflow-hidden mb-1.5"
+          style={{ background: "#2a2520" }}
+        >
+          <motion.div
+            className="h-full rounded-full"
+            style={{ background: col.bar }}
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 1.0, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
           />
         </div>
-
+        <p className="text-[10px]" style={{ color: "#4a4438" }}>
+          {progress}% through {level}
+        </p>
+      </div>
+ 
+      {/* ── Stats footer: sessions | next session ── */}
+      <div
+        className="grid grid-cols-2"
+        style={{ borderTop: "1px solid #1a1814" }}
+      >
+        <div className="p-3" style={{ borderRight: "1px solid #1a1814" }}>
+          <p className="text-base font-medium" style={{ color: "#f5f0e8" }}>
+            {sessCount}
+          </p>
+          <p className="mt-0.5 text-[10px]" style={{ color: "#6a6050" }}>
+            sessions done
+          </p>
+        </div>
+        <div className="p-3">
+          {nextDateStr ? (
+            <>
+              <p
+                className="text-xs font-medium"
+                style={{ color: "#1d9e75" }}
+              >
+                {nextDateStr}
+              </p>
+              <p className="mt-0.5 text-[10px]" style={{ color: "#6a6050" }}>
+                next session
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-xs" style={{ color: "#4a4438" }}>
+                —
+              </p>
+              <p className="mt-0.5 text-[10px]" style={{ color: "#4a4438" }}>
+                no upcoming
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+ 
+      {/* ── No assessment nudge ── */}
+      {hasNoAssessment && (
         <div
-          className="flex items-center justify-between px-6 py-4"
-          style={{ borderBottom: "1px solid #1a1814" }}
+          className="flex items-center gap-1.5 px-3.5 py-2.5"
+          style={{ borderTop: "1px solid #1a1814" }}
         >
-          <h2 className="text-base font-medium" style={{ color: "#f5f0e8" }}>
-            Edit profile
-          </h2>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
+          <Brain size={11} style={{ color: "#e8b84b" }} />
+          <p className="text-[11px]" style={{ color: "#6a6050" }}>
+            No assessment yet —{" "}
+            <span
+              className="cursor-pointer"
+              style={{ color: "#e8b84b" }}
+              onClick={() => router.push("/assessment")}
+            >
+              take one now
+            </span>
+          </p>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+ 
+// ─────────────────────────────────────────────────────────────────────────────
+// StudentLearningSection — drop-in replacement
+// ─────────────────────────────────────────────────────────────────────────────
+ 
+function StudentLearningSection({ skills, sessions, assessments = [] }) {
+  const learnSkills = skills.filter((s) => s.type === "learn");
+ 
+  // Sessions completed per skill name
+  const completedBySkill = {};
+  sessions
+    .filter((s) => s.status === "completed")
+    .forEach((s) => {
+      const sk = s.skill?.skill_name || s.skill?.name;
+      if (sk) completedBySkill[sk] = (completedBySkill[sk] || 0) + 1;
+    });
+ 
+  // Next upcoming session per skill
+  const nextSessionBySkill = {};
+  sessions
+    .filter(
+      (s) =>
+        s.status === "accepted" &&
+        s.scheduled_time &&
+        new Date(s.scheduled_time) > new Date()
+    )
+    .sort((a, b) => new Date(a.scheduled_time) - new Date(b.scheduled_time))
+    .forEach((s) => {
+      const sk = s.skill?.skill_name || s.skill?.name;
+      if (sk && !nextSessionBySkill[sk]) nextSessionBySkill[sk] = s;
+    });
+ 
+  // Streak
+  const streak = calcStreak(sessions);
+ 
+  return (
+    <div className="space-y-3">
+      <SectionCard>
+        {/* ── Section header with streak badge ── */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3">
+          <div className="flex items-center gap-2">
+            <TrendingUp size={14} style={{ color: "#e8b84b" }} />
+            <span className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
+              Learning Progress
+            </span>
+          </div>
+ 
+          {streak > 0 && (
+            <div
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1"
+              style={{
+                background: "rgba(251,146,60,0.09)",
+                border: "1px solid rgba(251,146,60,0.2)",
+              }}
+            >
+              <Flame size={11} style={{ color: "#fb923c" }} />
+              <span
+                className="text-[11px] font-semibold"
+                style={{ color: "#fb923c" }}
+              >
+                {streak} day streak
+              </span>
+            </div>
+          )}
+        </div>
+ 
+        <div className="px-5 pb-5">
+          {learnSkills.length === 0 ? (
+            <EmptyState
+              icon={BookOpen}
+              title="No skills added yet"
+              subtitle="Complete the setup wizard to add skills you want to learn"
+            />
+          ) : (
+            <div className="space-y-3">
+              {learnSkills.map((skill, i) => (
+                <SkillProgressCard
+                  key={skill.id || i}
+                  skill={skill}
+                  sessCount={completedBySkill[skill.skill_name] || 0}
+                  assessments={assessments}
+                  nextSession={nextSessionBySkill[skill.skill_name] || null}
+                  index={i}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </SectionCard>
+    </div>
+  );
+}
+ 
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tutor Courses Section
+// ─────────────────────────────────────────────────────────────────────────────
+
+function TutorCoursesSection({
+  courses,
+  isOwnProfile,
+  onAddCourse,
+  onEditCourse,
+  onDeleteCourse,
+}) {
+  const teachSkills = courses || [];
+
+  return (
+    <div className="space-y-3">
+      <SectionCard>
+      <SectionHeader
+        icon={BookOpen}
+        title="Courses Offered"
+        action={
+          <div className="flex items-center gap-1.5">
+            <span
+              className="text-xs px-2 py-0.5 rounded-md"
+              style={{ background: "rgba(232,184,75,0.1)", color: "#e8b84b" }}
+            >
+              {teachSkills.length} course{teachSkills.length !== 1 ? "s" : ""}
+            </span>
+            {isOwnProfile && (
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={onAddCourse}
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium"
+                style={{
+                  background: "rgba(232,184,75,0.08)",
+                  color: "#e8b84b",
+                  border: "1px solid rgba(232,184,75,0.2)",
+                }}
+              >
+                <Plus size={10} /> Add
+              </motion.button>
+            )}
+          </div>
+        }
+      />
+      <div className="px-5 pb-5">
+        {teachSkills.length === 0 ? (
+          <EmptyState
+            icon={BookOpen}
+            title="No courses yet"
+            subtitle="Add skills you can teach to appear in Explore"
+          />
+        ) : (
+          <div className="space-y-3">
+            {teachSkills.map((skill, i) => {
+              const col =
+                LEVEL_COLORS[skill.level] ||
+                LEVEL_COLORS.Intermediate;
+              const levelBadge =
+                skill.level === "Advanced"
+                  ? "Beginner -> Advanced"
+                  : skill.level || "Beginner";
+              const syllabus = [
+                `Level 1 — Foundations of ${skill.skill_name}`,
+                `Level 2 — Core concepts & practice`,
+                `Level 3 — Advanced techniques`,
+                `Level 4 — Real-world projects`,
+              ];
+              return (
+                <motion.div
+                  key={skill.id || i}
+                  variants={fadeUp}
+                  initial="hidden"
+                  animate="visible"
+                  custom={i}
+                  className="rounded-xl border p-4"
+                  style={{ background: "#141210", borderColor: "#2a2520" }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
+                        {skill.title || skill.skill_name}
+                      </p>
+                    </div>
+                    <span
+                      className="rounded-lg px-2 py-0.5 text-[10px] font-medium"
+                      style={{
+                        background: col.bg,
+                        border: `1px solid ${col.border}`,
+                        color: col.text,
+                      }}
+                    >
+                      {levelBadge}
+                    </span>
+                  </div>
+
+                  <p className="mt-2 text-xs leading-relaxed" style={{ color: "#8a8070" }}>
+                    {skill.short_description ||
+                      skill.description ||
+                      `A structured path from foundations to advanced ${skill.skill_name}. Each session includes notes and exercises.`}
+                  </p>
+
+                  <div className="mt-2 space-y-1.5">
+                    {syllabus.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-2 text-xs"
+                        style={{ color: "#6a6050" }}
+                      >
+                        <div
+                          className="h-1 w-1 rounded-full shrink-0"
+                          style={{ background: "#e8b84b" }}
+                        />
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+
+                  {isOwnProfile ? (
+                    <div className="mt-3 flex gap-2">
+                      <motion.button
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => onEditCourse?.(skill)}
+                        className="flex flex-1 items-center justify-center gap-1 rounded-xl border py-2 text-xs"
+                        style={{
+                          borderColor: "#2a2520",
+                          color: "#8a8070",
+                        }}
+                      >
+                        <Edit2 size={11} />
+                        Edit details
+                      </motion.button>
+                      <motion.button
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => onDeleteCourse?.(skill)}
+                        className="flex items-center justify-center rounded-xl border px-3 py-2 text-xs"
+                        style={{
+                          borderColor: "rgba(176,82,82,0.35)",
+                          color: "#b05252",
+                        }}
+                      >
+                        <Trash2 size={11} />
+                      </motion.button>
+                    </div>
+                  ) : (
+                    <motion.button
+                      whileTap={{ scale: 0.97 }}
+                      className="mt-4 w-full rounded-xl py-3 text-sm font-medium"
+                      style={{
+                        background: "#e8b84b",
+                        color: "#0e0c0a",
+                      }}
+                    >
+                      Request this Course
+                    </motion.button>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      </SectionCard>
+    </div>
+  );
+}
+
+function CourseEditorModal({ initialSkill, onClose, onSave }) {
+  const [form, setForm] = useState({
+    title: initialSkill?.title || initialSkill?.skill_name || "",
+    skill_name: initialSkill?.skill_name || "",
+    level: initialSkill?.level || "Beginner",
+    summary: initialSkill?.short_description || "",
+    duration: initialSkill?.duration_text || "",
+    prerequisites: initialSkill?.prerequisites || "",
+    outcomes: initialSkill?.outcomes || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+
+  const handleSave = async () => {
+    if (!form.title.trim()) {
+      setErr("Course title is required");
+      return;
+    }
+    const normalizedSkill = form.skill_name.trim() || form.title.trim();
+
+    const chunks = [];
+    if (form.summary.trim()) chunks.push(`Summary: ${form.summary.trim()}`);
+    if (form.duration.trim()) chunks.push(`Duration: ${form.duration.trim()}`);
+    if (form.prerequisites.trim())
+      chunks.push(`Prerequisites: ${form.prerequisites.trim()}`);
+    if (form.outcomes.trim()) chunks.push(`Outcomes: ${form.outcomes.trim()}`);
+    const description = chunks.join("\n");
+
+    setSaving(true);
+    const { error } = await onSave({
+      ...initialSkill,
+      title: form.title.trim(),
+      skill_name: normalizedSkill,
+      level: form.level,
+      short_description: form.summary.trim(),
+      description,
+      duration_text: form.duration.trim(),
+      prerequisites: form.prerequisites.trim(),
+      outcomes: form.outcomes.trim(),
+    });
+    setSaving(false);
+
+    if (error) {
+      setErr(error.message || "Could not save course");
+      return;
+    }
+    onClose();
+  };
+
+  const inputStyle = {
+    background: "#141210",
+    borderColor: "#2a2520",
+    color: "#f5f0e8",
+  };
+  const inputCls =
+    "w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition-colors focus:border-[rgba(232,184,75,0.4)]";
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-4 md:items-center"
+      style={{ background: "rgba(0,0,0,0.75)" }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        className="w-full max-w-md rounded-2xl border overflow-hidden"
+        style={{ background: "#0a0908", borderColor: "#2a2520" }}
+        initial={{ y: 60, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 60, opacity: 0 }}
+        transition={{ type: "spring", bounce: 0.18, duration: 0.45 }}
+      >
+        <div
+          className="flex items-center justify-between border-b px-5 py-4"
+          style={{ borderColor: "#1a1814" }}
+        >
+          <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
+            {initialSkill?.id ? "Edit Course" : "Add Course"}
+          </p>
+          <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-xl"
-            style={{ background: "#141210" }}
+            className="rounded-lg p-1.5 hover:bg-white/5"
           >
-            <X size={14} style={{ color: "#8a8070" }} />
-          </motion.button>
+            <X size={14} style={{ color: "#6a6050" }} />
+          </button>
         </div>
 
-        <div
-          className="space-y-4 overflow-y-auto px-6 py-5"
-          style={{ maxHeight: "60vh" }}
-        >
-          {[
-            {
-              key: "name",
-              icon: User,
-              label: "Full name",
-              placeholder: "Your full name",
-              type: "input",
-            },
-            {
-              key: "location",
-              icon: MapPin,
-              label: "Location",
-              placeholder: "e.g. Kozhikode, Kerala",
-              type: "input",
-            },
-          ].map(({ key, icon, label, placeholder }) => (
-            <div key={key}>
-              <FieldLabel icon={icon} label={label} />
-              <input
-                value={form[key]}
-                onChange={set(key)}
-                placeholder={placeholder}
-                className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
-                style={inputStyle}
-                onFocus={focusGold}
-                onBlur={blurReset}
-              />
-            </div>
-          ))}
+        <div className="p-5 space-y-3.5">
+          <div>
+            <label
+              className="mb-1.5 block text-xs font-medium"
+              style={{ color: "#8a8070" }}
+            >
+              Course title
+            </label>
+            <input
+              value={form.title}
+              onChange={(e) => set("title", e.target.value)}
+              placeholder="e.g. Python Basics Bootcamp"
+              className={inputCls}
+              style={inputStyle}
+              list="skill_suggestions"
+            />
+          </div>
 
           <div>
-            <FieldLabel icon={GraduationCap} label="Department" />
-            <select
-              value={form.department}
-              onChange={set("department")}
-              className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all appearance-none"
-              style={inputStyle}
-              onFocus={focusGold}
-              onBlur={blurReset}
+            <label
+              className="mb-1.5 block text-xs font-medium"
+              style={{ color: "#8a8070" }}
             >
-              <option value="" style={{ background: "#0a0908" }}>
-                Select department
-              </option>
-              {DEPARTMENTS.map((d) => (
-                <option key={d} value={d} style={{ background: "#0a0908" }}>
-                  {d}
+              Primary skill
+            </label>
+            <input
+              value={form.skill_name}
+              onChange={(e) => set("skill_name", e.target.value)}
+              placeholder="e.g. Python"
+              className={inputCls}
+              style={inputStyle}
+              list="skill_suggestions"
+            />
+            <datalist id="skill_suggestions">
+              {SKILL_SUGGESTIONS.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+          </div>
+
+          <div>
+            <label
+              className="mb-1.5 block text-xs font-medium"
+              style={{ color: "#8a8070" }}
+            >
+              Level
+            </label>
+            <select
+              value={form.level}
+              onChange={(e) => set("level", e.target.value)}
+              className={inputCls}
+              style={inputStyle}
+            >
+              {["Beginner", "Intermediate", "Advanced"].map((lvl) => (
+                <option key={lvl} value={lvl}>
+                  {lvl}
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <FieldLabel icon={FileText} label="Bio" />
+            <label
+              className="mb-1.5 block text-xs font-medium"
+              style={{ color: "#8a8070" }}
+            >
+              Summary
+            </label>
             <textarea
-              value={form.bio}
-              onChange={set("bio")}
-              placeholder="Tell others about yourself…"
-              rows={4}
-              className="w-full resize-none rounded-xl px-4 py-3 text-sm outline-none transition-all"
+              value={form.summary}
+              onChange={(e) => set("summary", e.target.value)}
+              placeholder="What students will learn in this course"
+              rows={3}
+              className={`${inputCls} resize-none`}
               style={inputStyle}
-              onFocus={focusGold}
-              onBlur={blurReset}
             />
-            <p className="mt-1 text-right text-xs" style={{ color: "#3a342c" }}>
-              {form.bio.length}/200
-            </p>
           </div>
 
-          {error && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-xs"
-              style={{ color: "#b05252" }}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label
+                className="mb-1.5 block text-xs font-medium"
+                style={{ color: "#8a8070" }}
+              >
+                Duration
+              </label>
+              <input
+                value={form.duration}
+                onChange={(e) => set("duration", e.target.value)}
+                placeholder="e.g. 4 weeks"
+                className={inputCls}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label
+                className="mb-1.5 block text-xs font-medium"
+                style={{ color: "#8a8070" }}
+              >
+                Prerequisites
+              </label>
+              <input
+                value={form.prerequisites}
+                onChange={(e) => set("prerequisites", e.target.value)}
+                placeholder="Optional"
+                className={inputCls}
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label
+              className="mb-1.5 block text-xs font-medium"
+              style={{ color: "#8a8070" }}
             >
-              {error}
-            </motion.p>
+              Outcomes
+            </label>
+            <textarea
+              value={form.outcomes}
+              onChange={(e) => set("outcomes", e.target.value)}
+              placeholder="What students should achieve by the end"
+              rows={2}
+              className={`${inputCls} resize-none`}
+              style={inputStyle}
+            />
+          </div>
+
+          {err && (
+            <p className="text-xs" style={{ color: "#b05252" }}>
+              {err}
+            </p>
+          )}
+
+          <div className="flex gap-2 pt-1">
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={onClose}
+              className="flex-1 rounded-xl border py-2.5 text-sm"
+              style={{ borderColor: "#2a2520", color: "#6a6050" }}
+            >
+              Cancel
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={handleSave}
+              disabled={saving}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium"
+              style={{
+                background: saving ? "#1a1814" : "#e8b84b",
+                color: saving ? "#3a342c" : "#0e0c0a",
+              }}
+            >
+              {saving && <Loader2 size={13} className="animate-spin" />}
+              {saving ? "Saving..." : "Save Course"}
+            </motion.button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tutor Incoming Requests Section
+// ─────────────────────────────────────────────────────────────────────────────
+
+function TutorRequestsSection({ sessions, userId }) {
+  const supabase = createSupabaseClient();
+  const [items, setItems] = useState(
+    sessions.filter((s) => s.provider_id === userId),
+  );
+
+  const handle = async (sessionId, action) => {
+    const status = action === "accept" ? "accepted" : "rejected";
+    const { error } = await supabase
+      .from("sessions")
+      .update({ status })
+      .eq("id", sessionId);
+    if (!error)
+      setItems((prev) =>
+        prev.map((s) => (s.id === sessionId ? { ...s, status } : s)),
+      );
+  };
+
+  const pending = items.filter((s) => s.status === "pending");
+  const upcoming = items.filter((s) => s.status === "accepted");
+  const past = items.filter((s) =>
+    ["completed", "rejected"].includes(s.status),
+  );
+
+  return (
+    <SectionCard>
+      <SectionHeader
+        icon={Zap}
+        title="Incoming Requests"
+        action={
+          pending.length > 0 && (
+            <span
+              className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-medium"
+              style={{ background: "#e8b84b", color: "#0e0c0a" }}
+            >
+              {pending.length}
+            </span>
+          )
+        }
+      />
+      <div className="px-5 pb-5 space-y-4">
+        {/* Pending */}
+        {pending.length > 0 && (
+          <div>
+            <p
+              className="mb-2 text-[10px] font-medium uppercase tracking-widest"
+              style={{ color: "#4a4438" }}
+            >
+              Awaiting response
+            </p>
+            <div className="space-y-2">
+              {pending.map((s, i) => (
+                <motion.div
+                  key={s.id}
+                  variants={fadeUp}
+                  initial="hidden"
+                  animate="visible"
+                  custom={i}
+                  className="rounded-xl border p-3.5"
+                  style={{
+                    background: "#141210",
+                    borderColor: "rgba(232,184,75,0.15)",
+                  }}
+                >
+                  <div className="flex items-start gap-3 mb-3">
+                    <Avatar
+                      name={s.requester?.name}
+                      url={s.requester?.avatar_url}
+                      size={9}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className="text-sm font-medium"
+                        style={{ color: "#f5f0e8" }}
+                      >
+                        {s.requester?.name || "Student"}
+                      </p>
+                      <p
+                        className="text-xs mt-0.5"
+                        style={{ color: "#8a8070" }}
+                      >
+                        Wants to learn:{" "}
+                        <span style={{ color: "#e8b84b" }}>
+                          {s.skill?.skill_name || "Skill"}
+                        </span>
+                      </p>
+                      {s.scheduled_time && (
+                        <p
+                          className="text-xs mt-1 flex items-center gap-1"
+                          style={{ color: "#6a6050" }}
+                        >
+                          <Clock size={9} />
+                          {new Date(s.scheduled_time).toLocaleDateString(
+                            "en-US",
+                            {
+                              weekday: "short",
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            },
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <motion.button
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => handle(s.id, "reject")}
+                      className="flex-1 rounded-xl border py-2 text-xs font-medium"
+                      style={{ borderColor: "#2a2520", color: "#6a6050" }}
+                    >
+                      Decline
+                    </motion.button>
+                    <motion.button
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => handle(s.id, "accept")}
+                      className="flex-1 rounded-xl py-2 text-xs font-medium"
+                      style={{ background: "#e8b84b", color: "#0e0c0a" }}
+                    >
+                      Accept
+                    </motion.button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Upcoming */}
+        {upcoming.length > 0 && (
+          <div>
+            <p
+              className="mb-2 text-[10px] font-medium uppercase tracking-widest"
+              style={{ color: "#4a4438" }}
+            >
+              Upcoming
+            </p>
+            <div className="space-y-2">
+              {upcoming.map((s, i) => (
+                <SessionRow key={s.id} session={s} userId={userId} index={i} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Past */}
+        {past.length > 0 && (
+          <div>
+            <p
+              className="mb-2 text-[10px] font-medium uppercase tracking-widest"
+              style={{ color: "#4a4438" }}
+            >
+              Past
+            </p>
+            <div className="space-y-2">
+              {past.map((s, i) => (
+                <SessionRow key={s.id} session={s} userId={userId} index={i} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {items.length === 0 && (
+          <EmptyState
+            icon={Calendar}
+            title="No requests yet"
+            subtitle="Students who find you in Explore will send requests here"
+          />
+        )}
+      </div>
+    </SectionCard>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Session Notes Upload Section (inside completed session)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SessionNotesPanel({ session, isOwnProfile, isTutor }) {
+  const supabase = createSupabaseClient();
+  const [notes, setNotes] = useState(session.notes || []);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef();
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const path = `session-notes/${session.id}/${Date.now()}-${file.name}`;
+      const { data, error } = await supabase.storage
+        .from("skillbridge-notes")
+        .upload(path, file);
+      if (!error) {
+        const { data: urlData } = supabase.storage
+          .from("skillbridge-notes")
+          .getPublicUrl(path);
+        const newNote = {
+          name: file.name,
+          url: urlData.publicUrl,
+          size: file.size,
+        };
+        const updatedNotes = [...notes, newNote];
+        setNotes(updatedNotes);
+        await supabase
+          .from("sessions")
+          .update({ notes: updatedNotes })
+          .eq("id", session.id);
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async (idx) => {
+    const updated = notes.filter((_, i) => i !== idx);
+    setNotes(updated);
+    await supabase
+      .from("sessions")
+      .update({ notes: updated })
+      .eq("id", session.id);
+  };
+
+  if (session.status !== "completed") return null;
+  if (!isTutor && !isOwnProfile && notes.length === 0) return null;
+
+  return (
+    <div
+      className="mt-3 rounded-xl border overflow-hidden"
+      style={{ borderColor: "#2a2520" }}
+    >
+      <div
+        className="flex items-center gap-2 px-3 py-2.5"
+        style={{
+          background: "#0e0c0a",
+          borderBottom:
+            notes.length > 0 || isTutor ? "1px solid #1a1814" : "none",
+        }}
+      >
+        <FileText size={11} style={{ color: "#e8b84b" }} />
+        <span className="text-[11px] font-medium" style={{ color: "#8a8070" }}>
+          Session notes
+        </span>
+        {isTutor && isOwnProfile && (
+          <>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".pdf,.doc,.docx,.jpg,.png"
+              className="hidden"
+              onChange={handleUpload}
+            />
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="ml-auto flex items-center gap-1 rounded-lg px-2 py-1 text-[10px]"
+              style={{ background: "rgba(232,184,75,0.1)", color: "#e8b84b" }}
+            >
+              {uploading ? (
+                <Loader2 size={9} className="animate-spin" />
+              ) : (
+                <Upload size={9} />
+              )}
+              {uploading ? "Uploading…" : "Upload"}
+            </motion.button>
+          </>
+        )}
+      </div>
+      {notes.length > 0 && (
+        <div className="divide-y" style={{ "--tw-divide-opacity": 1 }}>
+          {notes.map((note, idx) => (
+            <div
+              key={idx}
+              className="flex items-center gap-2.5 px-3 py-2.5"
+              style={{ background: "#0a0908", borderColor: "#1a1814" }}
+            >
+              <div
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+                style={{ background: "#141210", border: "1px solid #2a2520" }}
+              >
+                <FileText size={11} style={{ color: "#e8b84b" }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs truncate" style={{ color: "#f5f0e8" }}>
+                  {note.name}
+                </p>
+                <p className="text-[10px]" style={{ color: "#4a4438" }}>
+                  {note.size ? `${Math.round(note.size / 1024)} KB` : ""}
+                </p>
+              </div>
+              <a href={note.url} target="_blank" rel="noreferrer">
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px]"
+                  style={{
+                    background: "rgba(29,158,117,0.1)",
+                    color: "#1d9e75",
+                  }}
+                >
+                  <Download size={9} /> View
+                </motion.button>
+              </a>
+              {isTutor && isOwnProfile && (
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => handleDelete(idx)}
+                  className="rounded-lg p-1 hover:bg-white/5"
+                >
+                  <Trash2 size={11} style={{ color: "#4a4438" }} />
+                </motion.button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {notes.length === 0 && isTutor && isOwnProfile && (
+        <p className="px-3 py-2.5 text-[11px]" style={{ color: "#4a4438" }}>
+          Upload notes for the student to download
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Session Row
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SessionRow({
+  session: s,
+  userId,
+  index,
+  showNotes = false,
+  isTutor = false,
+}) {
+  const cfg = STATUS_CONFIG[s.status] || STATUS_CONFIG.pending;
+  const StatusIcon = cfg.icon;
+  const isRequester = s.requester_id === userId;
+  const other = isRequester ? s.provider : s.requester;
+
+  return (
+    <motion.div
+      variants={fadeUp}
+      initial="hidden"
+      animate="visible"
+      custom={index}
+      className="rounded-xl border p-3.5"
+      style={{ background: "#141210", borderColor: "#2a2520" }}
+    >
+      <div className="flex items-start gap-3">
+        <Avatar name={other?.name} url={other?.avatar_url} size={9} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
+                {other?.name || "User"}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: "#8a8070" }}>
+                {s.skill?.skill_name || s.skill?.name || "Session"}
+              </p>
+            </div>
+            <span
+              className="flex shrink-0 items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px]"
+              style={{
+                background: cfg.bg,
+                borderColor: cfg.color + "40",
+                color: cfg.color,
+              }}
+            >
+              <StatusIcon
+                size={8}
+                className={s.status === "accepted" ? "animate-spin" : ""}
+              />
+              {cfg.label}
+            </span>
+          </div>
+          {s.scheduled_time && (
+            <p
+              className="mt-1 flex items-center gap-1 text-xs"
+              style={{ color: "#6a6050" }}
+            >
+              <Clock size={9} />
+              {new Date(s.scheduled_time).toLocaleDateString("en-US", {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
           )}
         </div>
+      </div>
+      {showNotes && (
+        <SessionNotesPanel session={s} isOwnProfile isTutor={isTutor} />
+      )}
+    </motion.div>
+  );
+}
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Session History (Student view)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function StudentSessionsSection({ sessions, userId }) {
+  const visible = sessions.slice(0, 6);
+  return (
+    <SectionCard>
+      <SectionHeader icon={Calendar} title="Session History" />
+      <div className="px-5 pb-5">
+        {visible.length === 0 ? (
+          <EmptyState
+            icon={Calendar}
+            title="No sessions yet"
+            subtitle="Your sessions will appear here once you get started"
+          />
+        ) : (
+          <div className="space-y-2">
+            {visible.map((s, i) => (
+              <SessionRow
+                key={s.id}
+                session={s}
+                userId={userId}
+                index={i}
+                showNotes
+                isTutor={false}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </SectionCard>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Ratings & Reviews
+// ─────────────────────────────────────────────────────────────────────────────
+
+function RatingsSection({ ratings, avgRating }) {
+  const dist = [5, 4, 3, 2, 1].map((star) => ({
+    star,
+    count: ratings.filter((r) => r.score === star).length,
+    pct: ratings.length
+      ? Math.round(
+          (ratings.filter((r) => r.score === star).length / ratings.length) *
+            100,
+        )
+      : 0,
+  }));
+
+  return (
+    <SectionCard>
+      <SectionHeader icon={Star} title="Ratings & Reviews" />
+      <div className="px-5 pb-5">
+        {ratings.length === 0 ? (
+          <EmptyState
+            icon={Star}
+            title="No reviews yet"
+            subtitle="Reviews appear after completed sessions"
+          />
+        ) : (
+          <>
+            <div
+              className="mb-4 flex items-center gap-5 rounded-xl border p-4"
+              style={{ background: "#141210", borderColor: "#2a2520" }}
+            >
+              <div className="text-center shrink-0">
+                <div
+                  className="text-3xl font-medium"
+                  style={{ color: "#e8b84b" }}
+                >
+                  {avgRating}
+                </div>
+                <StarRow score={Math.round(parseFloat(avgRating || 0))} />
+                <div className="mt-1 text-[10px]" style={{ color: "#6a6050" }}>
+                  {ratings.length} reviews
+                </div>
+              </div>
+              <div className="flex-1 space-y-1.5">
+                {dist.map(({ star, pct }) => (
+                  <div key={star} className="flex items-center gap-2">
+                    <span
+                      className="w-2 text-right text-[10px] shrink-0"
+                      style={{ color: "#6a6050" }}
+                    >
+                      {star}
+                    </span>
+                    <div
+                      className="flex-1 h-1 rounded-full overflow-hidden"
+                      style={{ background: "#2a2520" }}
+                    >
+                      <motion.div
+                        className="h-full rounded-full"
+                        style={{ background: "#e8b84b" }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.8, delay: 0.1 }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-3">
+              {ratings.map((r, i) => (
+                <motion.div
+                  key={r.id}
+                  variants={fadeUp}
+                  initial="hidden"
+                  animate="visible"
+                  custom={i}
+                  className="rounded-xl border p-3.5"
+                  style={{ background: "#141210", borderColor: "#2a2520" }}
+                >
+                  <div className="flex items-start gap-3">
+                    <Avatar
+                      name={r.rater?.name}
+                      url={r.rater?.avatar_url}
+                      size={8}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <div>
+                          <p
+                            className="text-xs font-medium"
+                            style={{ color: "#f5f0e8" }}
+                          >
+                            {r.rater?.name || "Anonymous"}
+                          </p>
+                          <p
+                            className="text-[10px]"
+                            style={{ color: "#4a4438" }}
+                          >
+                            {new Date(r.created_at).toLocaleDateString(
+                              "en-US",
+                              { month: "short", year: "numeric" },
+                            )}
+                          </p>
+                        </div>
+                        <StarRow score={r.score} size={10} />
+                      </div>
+                      {r.feedback && (
+                        <p
+                          className="text-xs leading-relaxed"
+                          style={{ color: "#8a8070" }}
+                        >
+                          {r.feedback}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </SectionCard>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Profile Edit Modal
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ProfileEditModal({ profile, onSave, onClose }) {
+  const [form, setForm] = useState({
+    name: profile?.name || "",
+    bio: profile?.bio || "",
+    department: profile?.department || "",
+    location: profile?.location || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+
+  const handleSave = async () => {
+    if (!form.name.trim()) {
+      setErr("Name is required");
+      return;
+    }
+    setSaving(true);
+    const { error } = await onSave(form);
+    if (error) {
+      setErr(error.message);
+      setSaving(false);
+    }
+  };
+
+  const inputStyle = {
+    background: "#141210",
+    borderColor: "#2a2520",
+    color: "#f5f0e8",
+  };
+  const inputCls =
+    "w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition-colors focus:border-[rgba(232,184,75,0.4)]";
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-4 md:items-center"
+      style={{ background: "rgba(0,0,0,0.75)" }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        className="w-full max-w-md rounded-2xl border overflow-hidden"
+        style={{ background: "#0a0908", borderColor: "#2a2520" }}
+        initial={{ y: 60, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 60, opacity: 0 }}
+        transition={{ type: "spring", bounce: 0.18, duration: 0.45 }}
+      >
         <div
-          className="flex items-center gap-3 px-6 py-4"
-          style={{ borderTop: "1px solid #1a1814" }}
+          className="flex items-center justify-between border-b px-5 py-4"
+          style={{ borderColor: "#1a1814" }}
         >
-          <motion.button
-            whileTap={{ scale: 0.97 }}
+          <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
+            Edit Profile
+          </p>
+          <button
             onClick={onClose}
-            className="flex-1 rounded-xl py-3 text-sm"
-            style={{ border: "1px solid #2a2520", color: "#6a6050" }}
+            className="rounded-lg p-1.5 hover:bg-white/5"
           >
-            Cancel
-          </motion.button>
+            <X size={14} style={{ color: "#6a6050" }} />
+          </button>
+        </div>
+        <div className="p-5 space-y-3.5">
+          <div>
+            <label
+              className="mb-1.5 block text-xs font-medium"
+              style={{ color: "#8a8070" }}
+            >
+              Display name
+            </label>
+            <input
+              value={form.name}
+              onChange={(e) => set("name", e.target.value)}
+              placeholder="Your name"
+              className={inputCls}
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label
+              className="mb-1.5 block text-xs font-medium"
+              style={{ color: "#8a8070" }}
+            >
+              Location
+            </label>
+            <input
+              value={form.location}
+              onChange={(e) => set("location", e.target.value)}
+              placeholder="City, College"
+              className={inputCls}
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label
+              className="mb-1.5 block text-xs font-medium"
+              style={{ color: "#8a8070" }}
+            >
+              Department
+            </label>
+            <select
+              value={form.department}
+              onChange={(e) => set("department", e.target.value)}
+              className={inputCls}
+              style={inputStyle}
+            >
+              <option value="">Select department</option>
+              {DEPARTMENTS.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label
+              className="mb-1.5 block text-xs font-medium"
+              style={{ color: "#8a8070" }}
+            >
+              Bio
+            </label>
+            <textarea
+              value={form.bio}
+              onChange={(e) => set("bio", e.target.value)}
+              placeholder="Tell others about yourself…"
+              rows={3}
+              className={`${inputCls} resize-none`}
+              style={inputStyle}
+            />
+          </div>
+          {err && (
+            <p
+              className="flex items-center gap-1.5 text-xs"
+              style={{ color: "#b05252" }}
+            >
+              <AlertCircle size={11} /> {err}
+            </p>
+          )}
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={handleSave}
             disabled={saving}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium"
+            className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium"
             style={{
               background: saving ? "#1a1814" : "#e8b84b",
               color: saving ? "#3a342c" : "#0e0c0a",
             }}
           >
-            {saving && <Spin size={13} className="animate-spin" />}
-            {saving ? "Saving…" : "Save changes"}
+            {saving ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                Saving…
+              </>
+            ) : (
+              "Save Changes"
+            )}
           </motion.button>
         </div>
       </motion.div>
-    </>
+    </motion.div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ProfileSetupWizard
-// ─────────────────────────────────────────────────────────────────────────────
-
-function StepDots({ total, current }) {
-  return (
-    <div className="flex items-center gap-2">
-      {Array.from({ length: total }).map((_, i) => (
-        <motion.div
-          key={i}
-          animate={{
-            width: i === current ? 20 : 6,
-            background: i <= current ? "#e8b84b" : "#2a2520",
-          }}
-          transition={{ duration: 0.3 }}
-          className="h-1.5 rounded-full"
-        />
-      ))}
-    </div>
-  );
-}
-
-function WizardSkillTag({ skill, type, onRemove }) {
-  return (
-    <motion.span
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      exit={{ scale: 0.8, opacity: 0 }}
-      className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium"
-      style={{
-        background:
-          type === "teach" ? "rgba(232,184,75,0.12)" : "rgba(29,158,117,0.1)",
-        color: type === "teach" ? "#e8b84b" : "#1d9e75",
-        border: `1px solid ${type === "teach" ? "rgba(232,184,75,0.2)" : "rgba(29,158,117,0.2)"}`,
-      }}
-    >
-      {skill}
-      <button
-        onClick={() => onRemove(skill)}
-        className="opacity-60 hover:opacity-100 transition-opacity"
-      >
-        <X size={10} />
-      </button>
-    </motion.span>
-  );
-}
-
-function ProfileSetupWizard({ user, onComplete }) {
-  const supabase = createSupabaseClient();
-  const [step, setStep] = useState(0);
-  const [dir, setDir] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [form, setForm] = useState({
-    name: user?.user_metadata?.full_name || "",
-    department: "",
-    year: "",
-    bio: "",
-    teachSkills: [],
-    learnSkills: [],
-    skillInput: "",
-    learnInput: "",
-  });
-
-  const STEPS = [
-    { icon: User, title: "About you", subtitle: "Let's set up your profile" },
-    {
-      icon: GraduationCap,
-      title: "Your department",
-      subtitle: "Tell us where you study",
-    },
-    {
-      icon: BookOpen,
-      title: "Skills you teach",
-      subtitle: "What can you share?",
-    },
-    {
-      icon: Sparkles,
-      title: "Skills to learn",
-      subtitle: "What do you want to pick up?",
-    },
-    {
-      icon: CheckCircle2,
-      title: "All done!",
-      subtitle: "Your profile is ready",
-    },
-  ];
-
-  const go = (next) => {
-    setDir(next > step ? 1 : -1);
-    setStep(next);
-  };
-
-  const addSkill = (type) => {
-    const key = type === "teach" ? "skillInput" : "learnInput";
-    const listKey = type === "teach" ? "teachSkills" : "learnSkills";
-    const val = form[key].trim();
-    if (val && !form[listKey].includes(val))
-      setForm((f) => ({ ...f, [listKey]: [...f[listKey], val], [key]: "" }));
-  };
-
-  const removeSkill = (type, skill) => {
-    const key = type === "teach" ? "teachSkills" : "learnSkills";
-    setForm((f) => ({ ...f, [key]: f[key].filter((s) => s !== skill) }));
-  };
-
-  const handleFinish = async () => {
-    setLoading(true);
-    setError("");
-    const profileData = {
-      name: form.name,
-      department: `${form.department}${form.year ? " · " + form.year : ""}`,
-      bio: form.bio,
-    };
-    const { error: profileErr } = await onComplete(profileData);
-    if (profileErr) {
-      setError("Something went wrong. Please try again.");
-      setLoading(false);
-      return;
-    }
-    const skillRows = [
-      ...form.teachSkills.map((s) => ({
-        user_id: user.id,
-        skill_name: s,
-        type: "teach",
-      })),
-      ...form.learnSkills.map((s) => ({
-        user_id: user.id,
-        skill_name: s,
-        type: "learn",
-      })),
-    ];
-    if (skillRows.length > 0) await supabase.from("skills").insert(skillRows);
-    setLoading(false);
-  };
-
-  const canNext = () => {
-    if (step === 0) return form.name.trim().length > 1;
-    if (step === 1) return form.department.length > 0;
-    return true;
-  };
-  const CurrentIcon = STEPS[step].icon;
-
-  return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12">
-      <div className="w-full max-w-lg">
-        <motion.div
-          initial={{ opacity: 0, y: -16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8 text-center"
-        >
-          <div
-            className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl"
-            style={{
-              background: "rgba(232,184,75,0.1)",
-              border: "1px solid rgba(232,184,75,0.2)",
-            }}
-          >
-            <CurrentIcon size={20} style={{ color: "#e8b84b" }} />
-          </div>
-          <h2 className="text-xl font-medium" style={{ color: "#f5f0e8" }}>
-            {STEPS[step].title}
-          </h2>
-          <p className="mt-1 text-sm" style={{ color: "#6a6050" }}>
-            {STEPS[step].subtitle}
-          </p>
-        </motion.div>
-
-        <div
-          className="relative overflow-hidden rounded-2xl border px-6 py-8"
-          style={{ background: "#0a0908", borderColor: "#2a2520" }}
-        >
-          <div className="mb-6 flex justify-center">
-            <StepDots total={STEPS.length} current={step} />
-          </div>
-
-          <div style={{ minHeight: 240 }}>
-            <AnimatePresence mode="wait" custom={dir}>
-              <motion.div
-                key={step}
-                custom={dir}
-                variants={slideVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-              >
-                {/* Step 0 — name + bio */}
-                {step === 0 && (
-                  <div className="space-y-4">
-                    <div>
-                      <FieldLabel icon={User} label="Full name" />
-                      <input
-                        value={form.name}
-                        onChange={(e) =>
-                          setForm((f) => ({ ...f, name: e.target.value }))
-                        }
-                        placeholder="Your name"
-                        className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
-                        style={inputStyle}
-                        onFocus={(e) =>
-                          (e.target.style.borderColor = "#e8b84b")
-                        }
-                        onBlur={(e) => (e.target.style.borderColor = "#2a2520")}
-                      />
-                    </div>
-                    <div>
-                      <label
-                        className="mb-1.5 block text-xs font-medium"
-                        style={{ color: "#8a8070" }}
-                      >
-                        Bio <span style={{ color: "#3a342c" }}>(optional)</span>
-                      </label>
-                      <textarea
-                        value={form.bio}
-                        onChange={(e) =>
-                          setForm((f) => ({ ...f, bio: e.target.value }))
-                        }
-                        placeholder="Tell others about yourself…"
-                        rows={3}
-                        className="w-full resize-none rounded-xl px-4 py-3 text-sm outline-none transition-all"
-                        style={inputStyle}
-                        onFocus={(e) =>
-                          (e.target.style.borderColor = "#e8b84b")
-                        }
-                        onBlur={(e) => (e.target.style.borderColor = "#2a2520")}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 1 — department + year */}
-                {step === 1 && (
-                  <div className="space-y-4">
-                    <div>
-                      <label
-                        className="mb-2 block text-xs font-medium"
-                        style={{ color: "#8a8070" }}
-                      >
-                        Department
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {DEPARTMENTS.map((dept) => (
-                          <button
-                            key={dept}
-                            onClick={() =>
-                              setForm((f) => ({ ...f, department: dept }))
-                            }
-                            className="rounded-xl px-3 py-2 text-xs font-medium transition-all"
-                            style={{
-                              background:
-                                form.department === dept
-                                  ? "#e8b84b"
-                                  : "rgba(42,37,32,0.5)",
-                              color:
-                                form.department === dept
-                                  ? "#0e0c0a"
-                                  : "#8a8070",
-                              border: `1px solid ${form.department === dept ? "#e8b84b" : "#2a2520"}`,
-                            }}
-                          >
-                            {dept}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <label
-                        className="mb-2 block text-xs font-medium"
-                        style={{ color: "#8a8070" }}
-                      >
-                        Year of study
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {YEARS.map((yr) => (
-                          <button
-                            key={yr}
-                            onClick={() => setForm((f) => ({ ...f, year: yr }))}
-                            className="rounded-xl px-3 py-2 text-xs font-medium transition-all"
-                            style={{
-                              background:
-                                form.year === yr
-                                  ? "rgba(232,184,75,0.12)"
-                                  : "rgba(42,37,32,0.5)",
-                              color: form.year === yr ? "#e8b84b" : "#6a6050",
-                              border: `1px solid ${form.year === yr ? "rgba(232,184,75,0.3)" : "#2a2520"}`,
-                            }}
-                          >
-                            {yr}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 2 — teach skills */}
-                {step === 2 && (
-                  <div className="space-y-4">
-                    <div className="flex gap-2">
-                      <input
-                        value={form.skillInput}
-                        onChange={(e) =>
-                          setForm((f) => ({ ...f, skillInput: e.target.value }))
-                        }
-                        onKeyDown={(e) =>
-                          e.key === "Enter" && addSkill("teach")
-                        }
-                        placeholder="e.g. React, Python, Figma…"
-                        className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none"
-                        style={inputStyle}
-                        onFocus={(e) =>
-                          (e.target.style.borderColor = "#e8b84b")
-                        }
-                        onBlur={(e) => (e.target.style.borderColor = "#2a2520")}
-                      />
-                      <motion.button
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => addSkill("teach")}
-                        className="rounded-xl px-4 text-sm font-medium"
-                        style={{ background: "#e8b84b", color: "#0e0c0a" }}
-                      >
-                        <Plus size={16} />
-                      </motion.button>
-                    </div>
-                    <AnimatePresence>
-                      {form.teachSkills.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {form.teachSkills.map((s) => (
-                            <WizardSkillTag
-                              key={s}
-                              skill={s}
-                              type="teach"
-                              onRemove={(sk) => removeSkill("teach", sk)}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </AnimatePresence>
-                    <div>
-                      <p className="mb-2 text-xs" style={{ color: "#4a4438" }}>
-                        Popular skills
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {SKILL_SUGGESTIONS.filter(
-                          (s) => !form.teachSkills.includes(s),
-                        )
-                          .slice(0, 8)
-                          .map((s) => (
-                            <button
-                              key={s}
-                              onClick={() =>
-                                setForm((f) => ({
-                                  ...f,
-                                  teachSkills: [...f.teachSkills, s],
-                                }))
-                              }
-                              className="rounded-lg px-2.5 py-1 text-xs"
-                              style={{
-                                background: "#141210",
-                                color: "#6a6050",
-                                border: "1px solid #2a2520",
-                              }}
-                            >
-                              + {s}
-                            </button>
-                          ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 3 — learn skills */}
-                {step === 3 && (
-                  <div className="space-y-4">
-                    <div className="flex gap-2">
-                      <input
-                        value={form.learnInput}
-                        onChange={(e) =>
-                          setForm((f) => ({ ...f, learnInput: e.target.value }))
-                        }
-                        onKeyDown={(e) =>
-                          e.key === "Enter" && addSkill("learn")
-                        }
-                        placeholder="e.g. Machine Learning, Figma…"
-                        className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none"
-                        style={inputStyle}
-                        onFocus={(e) =>
-                          (e.target.style.borderColor = "#1d9e75")
-                        }
-                        onBlur={(e) => (e.target.style.borderColor = "#2a2520")}
-                      />
-                      <motion.button
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => addSkill("learn")}
-                        className="rounded-xl px-4 text-sm"
-                        style={{
-                          background: "rgba(29,158,117,0.15)",
-                          color: "#1d9e75",
-                          border: "1px solid rgba(29,158,117,0.2)",
-                        }}
-                      >
-                        <Plus size={16} />
-                      </motion.button>
-                    </div>
-                    <AnimatePresence>
-                      {form.learnSkills.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {form.learnSkills.map((s) => (
-                            <WizardSkillTag
-                              key={s}
-                              skill={s}
-                              type="learn"
-                              onRemove={(sk) => removeSkill("learn", sk)}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </AnimatePresence>
-                    <div>
-                      <p className="mb-2 text-xs" style={{ color: "#4a4438" }}>
-                        Suggested
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {SKILL_SUGGESTIONS.filter(
-                          (s) =>
-                            !form.learnSkills.includes(s) &&
-                            !form.teachSkills.includes(s),
-                        )
-                          .slice(0, 8)
-                          .map((s) => (
-                            <button
-                              key={s}
-                              onClick={() =>
-                                setForm((f) => ({
-                                  ...f,
-                                  learnSkills: [...f.learnSkills, s],
-                                }))
-                              }
-                              className="rounded-lg px-2.5 py-1 text-xs"
-                              style={{
-                                background: "#141210",
-                                color: "#6a6050",
-                                border: "1px solid #2a2520",
-                              }}
-                            >
-                              + {s}
-                            </button>
-                          ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 4 — done */}
-                {step === 4 && (
-                  <div className="text-center space-y-4">
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: "spring", bounce: 0.4, delay: 0.1 }}
-                      className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl"
-                      style={{
-                        background: "rgba(29,158,117,0.12)",
-                        border: "1px solid rgba(29,158,117,0.2)",
-                      }}
-                    >
-                      <CheckCircle2 size={28} style={{ color: "#1d9e75" }} />
-                    </motion.div>
-                    <div>
-                      <p
-                        className="text-sm font-medium"
-                        style={{ color: "#f5f0e8" }}
-                      >
-                        Welcome to SkillBridge, {form.name.split(" ")[0]}!
-                      </p>
-                      <p className="mt-1 text-xs" style={{ color: "#6a6050" }}>
-                        You've added {form.teachSkills.length} skills to teach
-                        and {form.learnSkills.length} to learn.
-                      </p>
-                    </div>
-                    <div className="flex justify-center gap-3 flex-wrap">
-                      {form.teachSkills.slice(0, 3).map((s) => (
-                        <span
-                          key={s}
-                          className="rounded-xl px-3 py-1.5 text-xs"
-                          style={{
-                            background: "rgba(232,184,75,0.1)",
-                            color: "#e8b84b",
-                            border: "1px solid rgba(232,184,75,0.15)",
-                          }}
-                        >
-                          {s}
-                        </span>
-                      ))}
-                      {form.learnSkills.slice(0, 3).map((s) => (
-                        <span
-                          key={s}
-                          className="rounded-xl px-3 py-1.5 text-xs"
-                          style={{
-                            background: "rgba(29,158,117,0.08)",
-                            color: "#1d9e75",
-                            border: "1px solid rgba(29,158,117,0.15)",
-                          }}
-                        >
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-                    {error && (
-                      <p className="text-xs" style={{ color: "#b05252" }}>
-                        {error}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </motion.div>
-            </AnimatePresence>
-          </div>
-
-          {/* Wizard navigation */}
-          <div className="mt-8 flex items-center justify-between">
-            {step > 0 && step < 4 ? (
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={() => go(step - 1)}
-                className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm"
-                style={{ color: "#6a6050", border: "1px solid #2a2520" }}
-              >
-                <ChevronLeft size={14} />
-                Back
-              </motion.button>
-            ) : (
-              <div />
-            )}
-            {step < 3 && (
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={() => go(step + 1)}
-                disabled={!canNext()}
-                className="flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-medium"
-                style={{
-                  background: canNext() ? "#e8b84b" : "#1a1814",
-                  color: canNext() ? "#0e0c0a" : "#3a342c",
-                }}
-              >
-                Continue <ChevronRight size={14} />
-              </motion.button>
-            )}
-            {step === 3 && (
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={() => go(4)}
-                className="flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-medium"
-                style={{ background: "#e8b84b", color: "#0e0c0a" }}
-              >
-                Finish setup <ChevronRight size={14} />
-              </motion.button>
-            )}
-            {step === 4 && (
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={handleFinish}
-                disabled={loading}
-                className="mx-auto flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-medium"
-                style={{
-                  background: loading ? "#1a1814" : "#e8b84b",
-                  color: loading ? "#3a342c" : "#0e0c0a",
-                }}
-              >
-                {loading ? "Saving…" : "Go to Dashboard"}
-              </motion.button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ProfilePage — default export
+// Main Page
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
   const supabase = createSupabaseClient();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const isSetup = searchParams.get("setup") === "true";
+  const { role } = useRole();
 
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [skills, setSkills] = useState([]);
+  const [courses, setCourses] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [ratings, setRatings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("skills");
   const [isOwnProfile, setIsOwnProfile] = useState(true);
+  const [isAvailable, setIsAvailable] = useState(false);
+  const [activeTab, setActiveTab] = useState("main");
+  const [showTutorSetup, setShowTutorSetup] = useState(false);
+  const [courseEditorSkill, setCourseEditorSkill] = useState(null);
+
+  useEffect(() => {
+    function onRoleChange(event) {
+      const nextRole = event?.detail;
+      if (nextRole !== "student" && nextRole !== "tutor") return;
+
+      setActiveTab("main");
+
+      if (nextRole === "tutor" && isOwnProfile) {
+        const hasTeachSkills = skills.some((s) => s.type === "teach");
+        const hasCourses = courses.length > 0;
+        if (!hasTeachSkills && !hasCourses) setShowTutorSetup(true);
+      }
+    }
+
+    window.addEventListener("sb_role_change", onRoleChange);
+    return () => window.removeEventListener("sb_role_change", onRoleChange);
+  }, [isOwnProfile, skills, courses]);
 
   useEffect(() => {
     async function fetchAll() {
@@ -1825,22 +2055,25 @@ export default function ProfilePage() {
       const [
         { data: profileData },
         { data: skillsData },
+        { data: coursesData },
         { data: sessionsData },
         { data: ratingsData },
       ] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", authUser.id).single(),
+        supabase.from("profiles").select("*").eq("id", uid).single(),
+        supabase.from("user_skills").select("*, skill:skill_id(*)").eq("user_id", uid),
         supabase
-          .from("user_skills")
-          .select("*, skill:skill_id(*)")
-          .eq("user_id", uid),
+          .from("courses")
+          .select("*")
+          .eq("tutor_id", uid)
+          .order("created_at", { ascending: false }),
         supabase
           .from("sessions")
           .select(
-            "*, requester:requester_id(name,avatar_url), provider:provider_id(name,avatar_url), skill:skill_id(name)",
+            "*, requester:requester_id(name,avatar_url), provider:provider_id(name,avatar_url), skill:skill_id(skill_name,name)",
           )
           .or(`requester_id.eq.${uid},provider_id.eq.${uid}`)
           .order("created_at", { ascending: false })
-          .limit(6),
+          .limit(30),
         supabase
           .from("ratings")
           .select("*, rater:rater_id(name,avatar_url)")
@@ -1848,49 +2081,206 @@ export default function ProfilePage() {
           .order("created_at", { ascending: false }),
       ]);
 
+      const nextSkills = (skillsData || []).map(us => ({
+        ...us.skill,
+        type: us.type,
+        user_skill_id: us.id,
+        skill_id: us.skill_id
+      })).filter(s => s.name || s.skill_name);
+
+      const teachSkillMap = new Map(
+        nextSkills
+          .filter((s) => s.type === "teach")
+          .map((s) => [String(s.name || s.skill_name || "").toLowerCase(), s.skill_id]),
+      );
+      const mappedCourses = (coursesData || []).map((c) => ({
+        ...c,
+        skill_id:
+          c.skill_id ||
+          teachSkillMap.get(String(c.name || c.skill_name || "").toLowerCase()) ||
+          null,
+      }));
+
       setProfile(profileData);
-      setSkills((skillsData || []).map(s => s.skill).filter(Boolean));
+      setSkills(nextSkills);
+      setCourses(mappedCourses);
       setSessions(sessionsData || []);
       setRatings(ratingsData || []);
+      setIsAvailable(profileData?.is_available || false);
       setLoading(false);
     }
     fetchAll();
-  }, [supabase, router]);
+  }, [supabase, searchParams, router]);
 
-  const handleProfileUpdate = async (updatedData) => {
-    const {...dbData } = updatedData;
-
-    const { data, error } = await supabase
+  const handleAvailabilityToggle = async () => {
+    const next = !isAvailable;
+    setIsAvailable(next);
+    const { error } = await supabase
       .from("profiles")
-      .update(updatedData)
+      .update({ is_available: next })
+      .eq("id", user.id);
+    if (error) console.error("Availability toggle failed:", error.message);
+  };
+
+  const handleProfileUpdate = async (data) => {
+    const { data: updated, error } = await supabase
+      .from("profiles")
+      .update(data)
       .eq("id", user.id)
       .select()
       .single();
     if (!error) {
-      setProfile({ ...data });
+      setProfile(updated);
       setEditOpen(false);
     }
     return { error };
   };
 
-  const handleSetupComplete = async (setupData) => {
-    const { department, ...dbData } = setupData;
-    const { error } = await supabase
-      .from("profiles")
-      .upsert({ id: user.id, ...setupData });
-    if (!error) {
-      setProfile((prev) => ({ ...prev, ...setupData }));
-      router.push("/dashboard");
+  const handleCourseSave = async (course) => {
+    if (!user?.id) return { error: new Error("Not authenticated") };
+
+    const normalizedSkill = String(course.skill_name || "")
+      .trim()
+      .toLowerCase();
+    let resolvedSkillId = null;
+
+    if (normalizedSkill) {
+      const existingTeach = skills.find(
+        (s) =>
+          s.type === "teach" &&
+          String(s.name || s.skill_name || "").trim().toLowerCase() === normalizedSkill,
+      );
+
+      if (existingTeach?.skill_id || existingTeach?.id) {
+        resolvedSkillId = existingTeach.skill_id || existingTeach.id;
+      } else {
+        // 1. Ensure global skill exists
+        let globalSkill;
+        const { data: existingGlobal } = await supabase
+          .from("skills")
+          .select("*")
+          .ilike("name", course.skill_name)
+          .single();
+
+        if (existingGlobal) {
+          globalSkill = existingGlobal;
+        } else {
+          const { data: newGlobal, error: gError } = await supabase
+            .from("skills")
+            .insert({ name: course.skill_name })
+            .select()
+            .single();
+          if (gError) return { error: gError };
+          globalSkill = newGlobal;
+        }
+        
+        // 2. Link to user in user_skills table
+        const { data: userSkill, error: usError } = await supabase
+          .from("user_skills")
+          .insert({
+            user_id: user.id,
+            skill_id: globalSkill.id,
+            type: "teach"
+          })
+          .select("*, skill:skill_id(*)")
+          .single();
+
+        if (usError) return { error: usError };
+        
+        if (userSkill) {
+          const mapped = { ...userSkill.skill, type: userSkill.type, skill_id: userSkill.skill_id };
+          resolvedSkillId = mapped.skill_id;
+          setSkills((prev) => [mapped, ...prev]);
+        }
+      }
+    }
+
+    if (course?.id) {
+      const { data: updated, error } = await supabase
+        .from("courses")
+        .update({
+          title: course.title,
+          skill_name: course.skill_name,
+          level: course.level || "Beginner",
+          short_description: course.short_description || "",
+          description: course.description || "",
+          duration_text: course.duration_text || "",
+          prerequisites: course.prerequisites || "",
+          outcomes: course.outcomes || "",
+          is_active: true,
+          is_published: true,
+        })
+        .eq("id", course.id)
+        .eq("tutor_id", user.id)
+        .select()
+        .single();
+
+      if (!error && updated) {
+        setCourses((prev) =>
+          prev.map((s) =>
+            s.id === updated.id
+              ? { ...updated, skill_id: resolvedSkillId || s.skill_id || null }
+              : s,
+          ),
+        );
+      }
+      return { error };
+    }
+
+    const { data: inserted, error } = await supabase
+      .from("courses")
+      .insert({
+        tutor_id: user.id,
+        title: course.title,
+        skill_name: course.skill_name,
+        level: course.level || "Beginner",
+        short_description: course.short_description || "",
+        description: course.description || "",
+        duration_text: course.duration_text || "",
+        prerequisites: course.prerequisites || "",
+        outcomes: course.outcomes || "",
+        is_active: true,
+        is_published: true,
+      })
+      .select()
+      .single();
+
+    if (!error && inserted) {
+      setCourses((prev) => [
+        { ...inserted, skill_id: resolvedSkillId || null },
+        ...prev,
+      ]);
+      setShowTutorSetup(false);
     }
     return { error };
   };
 
+  const handleCourseDelete = async (course) => {
+    if (!course?.id || !user?.id) return;
+    const { error } = await supabase
+      .from("courses")
+      .delete()
+      .eq("id", course.id)
+      .eq("tutor_id", user.id);
+    if (!error) {
+      setCourses((prev) => prev.filter((s) => s.id !== course.id));
+    }
+  };
+
+  const completedSessions = sessions.filter((s) => s.status === "completed");
   const avgRating =
     ratings.length > 0
       ? (ratings.reduce((a, r) => a + r.score, 0) / ratings.length).toFixed(1)
       : null;
 
-  // ── Loading ──
+  // Tab config — student only (tutor uses stacked layout)
+  const STUDENT_TABS = [
+    { id: "main", label: "Learning" },
+    { id: "sessions", label: "Sessions" },
+    { id: "ratings", label: "Reviews" },
+  ];
+
+  // Loading
   if (loading) {
     return (
       <div
@@ -1900,110 +2290,144 @@ export default function ProfilePage() {
         <motion.div
           animate={{ opacity: [0.3, 1, 0.3] }}
           transition={{ duration: 1.5, repeat: Infinity }}
-          className="text-sm"
+          className="flex items-center gap-2 text-sm"
           style={{ color: "#4a4438" }}
         >
-          Loading profile…
+          <Loader2 size={14} className="animate-spin" /> Loading profile…
         </motion.div>
       </div>
     );
   }
 
-  // ── First-time setup ──
-  if (isSetup) {
-    return (
-      <div className="min-h-screen" style={{ background: "#0e0c0a" }}>
-        <ProfileSetupWizard user={user} onComplete={handleSetupComplete} />
-      </div>
-    );
-  }
-
-  // ── Main profile view ──
-  const TABS = ["skills", "sessions", "ratings"];
-
   return (
     <div
-      className="min-h-screen px-4 py-8 md:px-8 lg:px-12"
+      className="min-h-screen px-4 py-6 md:px-8 lg:px-12"
       style={{ background: "#0e0c0a" }}
     >
-      <div className="mx-auto max-w-4xl space-y-6">
-        <motion.div initial="hidden" animate="visible" variants={fadeUp}>
+      <div className="mx-auto max-w-2xl space-y-3">
+        {/* Hero */}
+        <motion.div variants={fadeUp} initial="hidden" animate="visible">
           <ProfileHero
             profile={profile}
             user={user}
-            skillCount={skills.length}
-            sessionCount={sessions.length}
+            role={role}
+            completedCount={completedSessions.length}
             avgRating={avgRating}
+            totalSessions={sessions.length}
+            isAvailable={isAvailable}
+            onAvailabilityToggle={handleAvailabilityToggle}
             onEdit={() => setEditOpen(true)}
             isOwnProfile={isOwnProfile}
           />
         </motion.div>
 
-        {/* Tab switcher */}
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={fadeUp}
-          custom={1}
-          className="flex gap-1 rounded-xl p-1"
-          style={{ background: "#0a0908", border: "1px solid #2a2520" }}
-        >
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className="relative flex-1 rounded-lg py-2.5 text-sm font-medium capitalize transition-colors"
-              style={{
-                color: activeTab === tab ? "#0e0c0a" : "#6a6050",
-                background: activeTab === tab ? "#e8b84b" : "transparent",
+        {/* Tutor setup prompt */}
+        <AnimatePresence>
+          {showTutorSetup && role === "tutor" && (
+            <TutorSetupPrompt
+              onDismiss={() => setShowTutorSetup(false)}
+              onSetup={() => {
+                setShowTutorSetup(false);
+                router.push("/profile?setup=true");
               }}
-            >
-              {activeTab === tab && (
-                <motion.div
-                  layoutId="profile-tab-bg"
-                  className="absolute inset-0 rounded-lg"
-                  style={{ background: "#e8b84b", zIndex: 0 }}
-                  transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
-                />
-              )}
-              <span className="relative z-10">{tab}</span>
-            </button>
-          ))}
-        </motion.div>
-
-        {/* Tab content */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-          >
-            {activeTab === "skills" && (
-              <SkillsSection
-                skills={skills}
-                userId={user?.id}
-                onSkillsChange={setSkills}
-                isOwnProfile={isOwnProfile}
-              />
-            )}
-            {activeTab === "sessions" && (
-              <SessionHistory sessions={sessions} userId={user?.id} isOwnProfile={isOwnProfile} />
-            )}
-            {activeTab === "ratings" && (
-              <RatingsSection ratings={ratings} avgRating={avgRating} />
-            )}
-          </motion.div>
+            />
+          )}
         </AnimatePresence>
+
+        {/* ── Tutor: stacked layout (no tabs) ── */}
+        {role === "tutor" && (
+          <motion.div
+            key="tutor-stacked"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="space-y-3"
+          >
+            {/* Courses Offered */}
+            <TutorCoursesSection
+              courses={courses}
+              isOwnProfile={isOwnProfile}
+              onAddCourse={() => setCourseEditorSkill({})}
+              onEditCourse={(skill) => setCourseEditorSkill(skill)}
+              onDeleteCourse={handleCourseDelete}
+            />
+
+            {/* Ratings & Reviews */}
+            <RatingsSection ratings={ratings} avgRating={avgRating} />
+          </motion.div>
+        )}
+
+        {/* ── Student: tab bar ── */}
+        {role === "student" && (
+          <>
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+              custom={1}
+              className="flex gap-1 rounded-xl p-1"
+              style={{ background: "#0a0908", border: "1px solid #2a2520" }}
+            >
+              {STUDENT_TABS.map(({ id, label }) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveTab(id)}
+                  className="relative flex-1 rounded-lg py-2.5 text-sm font-medium transition-colors"
+                  style={{ color: activeTab === id ? "#0e0c0a" : "#6a6050" }}
+                >
+                  {activeTab === id && (
+                    <motion.div
+                      layoutId="profile-tab"
+                      className="absolute inset-0 rounded-lg"
+                      style={{ background: "#e8b84b", zIndex: 0 }}
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
+                    />
+                  )}
+                  <span className="relative z-10">{label}</span>
+                </button>
+              ))}
+            </motion.div>
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`student-${activeTab}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              >
+                {activeTab === "main" && (
+                  <StudentLearningSection skills={skills} sessions={sessions} />
+                )}
+                {activeTab === "sessions" && (
+                  <StudentSessionsSection sessions={sessions} userId={user?.id} />
+                )}
+                {activeTab === "ratings" && (
+                  <RatingsSection ratings={ratings} avgRating={avgRating} />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </>
+        )}
       </div>
 
+      {/* Modals */}
       <AnimatePresence>
         {editOpen && (
           <ProfileEditModal
             profile={profile}
             onSave={handleProfileUpdate}
             onClose={() => setEditOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {courseEditorSkill && (
+          <CourseEditorModal
+            initialSkill={courseEditorSkill?.id ? courseEditorSkill : null}
+            onClose={() => setCourseEditorSkill(null)}
+            onSave={handleCourseSave}
           />
         )}
       </AnimatePresence>

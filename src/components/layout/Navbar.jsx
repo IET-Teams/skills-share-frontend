@@ -18,20 +18,28 @@ import {
   Bell,
   Settings,
   X,
-  Menu,
+  BookOpen,
+  GraduationCap,
 } from "lucide-react";
+import { useRole } from "@/context/RoleContext";
 
-// ─── Nav items ────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Nav items
+// ─────────────────────────────────────────────────────────────────────────────
+
 const NAV_ITEMS = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/profile", icon: User, label: "Profile" },
-  { href: "/explore", icon: Compass, label: "Explore" },
+  { href: "/explore", icon: Compass, label: "Explore", studentOnly: true },
   { href: "/sessions", icon: CalendarCheck, label: "Sessions" },
   { href: "/internships", icon: Briefcase, label: "Internships" },
   { href: "/chat", icon: MessageCircle, label: "Chat" },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
 function getInitials(name = "") {
   return (
     name
@@ -48,22 +56,102 @@ function isActive(pathname, href) {
   return pathname.startsWith(href);
 }
 
-// ─── Desktop sidebar ──────────────────────────────────────────────────────────
-function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// Role Toggle pill — reused in sidebar and mobile drawer
+// ─────────────────────────────────────────────────────────────────────────────
+
+function RoleToggle({ role, setRole, collapsed = false }) {
+  return (
+    <div
+      className="flex items-center gap-0.5 rounded-xl p-1"
+      style={{ background: "#141210", border: "1px solid #2a2520" }}
+      title={
+        collapsed
+          ? `Switch to ${role === "student" ? "Tutor" : "Student"}`
+          : undefined
+      }
+    >
+      {collapsed ? (
+        // Collapsed: single icon button that flips role
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setRole(role === "student" ? "tutor" : "student")}
+          className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
+          style={{ background: "rgba(232,184,75,0.1)", color: "#e8b84b" }}
+        >
+          {role === "student" ? (
+            <GraduationCap size={13} />
+          ) : (
+            <BookOpen size={13} />
+          )}
+        </motion.button>
+      ) : (
+        ["student", "tutor"].map((r) => (
+          <button
+            key={r}
+            onClick={() => setRole(r)}
+            className="relative flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium capitalize transition-colors"
+            style={{ color: role === r ? "#0e0c0a" : "#6a6050", minWidth: 0 }}
+          >
+            {role === r && (
+              <motion.div
+                layoutId="navbar-role-pill"
+                className="absolute inset-0 rounded-lg"
+                style={{ background: "#e8b84b" }}
+                transition={{ type: "spring", bounce: 0.2, duration: 0.38 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-1">
+              {r === "student" ? (
+                <GraduationCap size={10} />
+              ) : (
+                <BookOpen size={10} />
+              )}
+              {r === "student" ? "Student" : "Tutor"}
+            </span>
+          </button>
+        ))
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Desktop Sidebar
+// ─────────────────────────────────────────────────────────────────────────────
+
+function DesktopSidebar({
+  profile,
+  pathname,
+  onLogout,
+  unreadCount,
+  role,
+  setRole,
+}) {
   const [collapsed, setCollapsed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const initials = getInitials(profile?.name);
 
-  // Close user menu on outside click
+  // Filter nav items by role
+  const visibleItems = NAV_ITEMS.filter(
+    (item) => !(item.studentOnly && role === "tutor"),
+  );
+
   useEffect(() => {
     function handler(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
+      if (menuRef.current && !menuRef.current.contains(e.target))
         setUserMenuOpen(false);
-      }
     }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  useEffect(() => {
+    const openRoleSwitcher = () => setCollapsed(false);
+    window.addEventListener("sb_open_role_switcher", openRoleSwitcher);
+    return () =>
+      window.removeEventListener("sb_open_role_switcher", openRoleSwitcher);
   }, []);
 
   return (
@@ -71,10 +159,7 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
       animate={{ width: collapsed ? 68 : 220 }}
       transition={{ type: "spring", damping: 28, stiffness: 240 }}
       className="fixed left-0 top-0 z-40 flex h-screen flex-col overflow-hidden"
-      style={{
-        background: "#0a0908",
-        borderRight: "1px solid #1e1c18",
-      }}
+      style={{ background: "#0a0908", borderRight: "1px solid #1e1c18" }}
     >
       {/* Logo row */}
       <div
@@ -82,7 +167,6 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
         style={{ borderBottom: "1px solid #1a1814" }}
       >
         <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0">
-          {/* Logo mark */}
           <div
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
             style={{
@@ -93,7 +177,6 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
           >
             <Zap size={14} style={{ color: "#e8b84b" }} />
           </div>
-
           <AnimatePresence>
             {!collapsed && (
               <motion.span
@@ -110,11 +193,10 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
           </AnimatePresence>
         </Link>
 
-        {/* Collapse toggle */}
         <motion.button
           whileTap={{ scale: 0.93 }}
           onClick={() => setCollapsed((c) => !c)}
-          className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-colors"
+          className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-lg"
           style={{ color: "#3a342c" }}
         >
           <motion.div
@@ -126,9 +208,9 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
         </motion.button>
       </div>
 
-      {/* Nav items */}
+      {/* Nav */}
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
-        {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
+        {visibleItems.map(({ href, icon: Icon, label }) => {
           const active = isActive(pathname, href);
           const isChatWithBadge = href === "/chat" && unreadCount > 0;
 
@@ -142,16 +224,18 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
                   color: active ? "#e8b84b" : "#6a6050",
                 }}
                 onMouseEnter={(e) => {
-                  if (!active)
+                  if (!active) {
                     e.currentTarget.style.background = "rgba(255,255,255,0.03)";
-                  if (!active) e.currentTarget.style.color = "#c8bfb0";
+                    e.currentTarget.style.color = "#c8bfb0";
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  if (!active) e.currentTarget.style.background = "transparent";
-                  if (!active) e.currentTarget.style.color = "#6a6050";
+                  if (!active) {
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.color = "#6a6050";
+                  }
                 }}
               >
-                {/* Active indicator */}
                 {active && (
                   <motion.div
                     layoutId="sidebar-active"
@@ -160,12 +244,11 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
                     transition={{ type: "spring", bounce: 0.2, duration: 0.35 }}
                   />
                 )}
-
                 <div className="relative shrink-0">
                   <Icon size={16} />
                   {isChatWithBadge && (
                     <span
-                      className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full text-xs"
+                      className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full"
                       style={{
                         background: "#e8b84b",
                         color: "#0e0c0a",
@@ -177,7 +260,6 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
                     </span>
                   )}
                 </div>
-
                 <AnimatePresence>
                   {!collapsed && (
                     <motion.span
@@ -191,25 +273,46 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
                     </motion.span>
                   )}
                 </AnimatePresence>
-
-                {/* Tooltip when collapsed */}
-                {collapsed && (
-                  <div
-                    className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100"
-                    style={{
-                      background: "#1a1814",
-                      color: "#f5f0e8",
-                      border: "1px solid #2a2520",
-                    }}
-                  >
-                    {label}
-                  </div>
-                )}
               </motion.div>
             </Link>
           );
         })}
       </nav>
+
+      {/* Role toggle */}
+      <div className="px-2 pb-2">
+        <AnimatePresence mode="wait">
+          {!collapsed ? (
+            <motion.div
+              key="expanded"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              {/* Role label */}
+              <p
+                className="mb-1.5 px-1 text-[10px] font-medium uppercase tracking-widest"
+                style={{ color: "#3a342c" }}
+              >
+                Role
+              </p>
+              <RoleToggle role={role} setRole={setRole} collapsed={false} />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="collapsed"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="flex justify-center"
+            >
+              <RoleToggle role={role} setRole={setRole} collapsed={true} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Divider */}
       <div className="mx-3 my-1" style={{ borderTop: "1px solid #1a1814" }} />
@@ -230,7 +333,6 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
             e.currentTarget.style.color = "#6a6050";
           }}
         >
-          {/* Avatar */}
           {profile?.avatar_url ? (
             <img
               src={profile.avatar_url}
@@ -245,7 +347,6 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
               {initials}
             </div>
           )}
-
           <AnimatePresence>
             {!collapsed && (
               <motion.div
@@ -262,7 +363,9 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
                   {profile?.name || "Student"}
                 </p>
                 <p className="truncate text-xs" style={{ color: "#4a4438" }}>
-                  {profile?.department?.split("·")[0]?.trim() || "Campus"}
+                  {role === "tutor"
+                    ? "Tutor mode"
+                    : profile?.department?.split("·")[0]?.trim() || "Campus"}
                 </p>
               </motion.div>
             )}
@@ -280,7 +383,6 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
               className="absolute bottom-full left-2 right-2 mb-1 rounded-xl border py-1 shadow-2xl"
               style={{ background: "#141210", borderColor: "#2a2520" }}
             >
-              {/* Profile header */}
               <div
                 className="flex items-center gap-2.5 px-3 py-2.5"
                 style={{ borderBottom: "1px solid #1a1814" }}
@@ -314,7 +416,6 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
                   </p>
                 </div>
               </div>
-
               {[
                 { href: "/profile", icon: User, label: "View profile" },
                 {
@@ -346,7 +447,6 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
                   </div>
                 </Link>
               ))}
-
               <div
                 style={{ borderTop: "1px solid #1a1814" }}
                 className="mt-1 pt-1"
@@ -376,10 +476,15 @@ function DesktopSidebar({ profile, pathname, onLogout, unreadCount }) {
   );
 }
 
-// ─── Mobile bottom nav ────────────────────────────────────────────────────────
-function MobileBottomNav({ pathname, unreadCount }) {
-  // Show 5 main items on mobile
-  const mobileItems = NAV_ITEMS.slice(0, 5);
+// ─────────────────────────────────────────────────────────────────────────────
+// Mobile Bottom Nav
+// ─────────────────────────────────────────────────────────────────────────────
+
+function MobileBottomNav({ pathname, unreadCount, role }) {
+  const visibleItems = NAV_ITEMS.filter(
+    (item) => !(item.studentOnly && role === "tutor"),
+  );
+  const mobileItems = visibleItems.slice(0, 5);
 
   return (
     <nav
@@ -394,7 +499,6 @@ function MobileBottomNav({ pathname, unreadCount }) {
       {mobileItems.map(({ href, icon: Icon, label }) => {
         const active = isActive(pathname, href);
         const isChatWithBadge = href === "/chat" && unreadCount > 0;
-
         return (
           <Link
             key={href}
@@ -451,12 +555,31 @@ function MobileBottomNav({ pathname, unreadCount }) {
   );
 }
 
-// ─── Mobile top bar ───────────────────────────────────────────────────────────
-function MobileTopBar({ profile, pathname, onLogout, unreadCount }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// Mobile Top Bar + Drawer
+// ─────────────────────────────────────────────────────────────────────────────
+
+function MobileTopBar({
+  profile,
+  pathname,
+  onLogout,
+  unreadCount,
+  role,
+  setRole,
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
   const initials = getInitials(profile?.name);
-
   const currentPage = NAV_ITEMS.find((n) => isActive(pathname, n.href));
+  const visibleItems = NAV_ITEMS.filter(
+    (item) => !(item.studentOnly && role === "tutor"),
+  );
+
+  useEffect(() => {
+    const openRoleSwitcher = () => setMenuOpen(true);
+    window.addEventListener("sb_open_role_switcher", openRoleSwitcher);
+    return () =>
+      window.removeEventListener("sb_open_role_switcher", openRoleSwitcher);
+  }, []);
 
   return (
     <>
@@ -468,7 +591,6 @@ function MobileTopBar({ profile, pathname, onLogout, unreadCount }) {
           borderBottom: "1px solid #1a1814",
         }}
       >
-        {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2">
           <div
             className="flex h-7 w-7 items-center justify-center rounded-lg"
@@ -485,18 +607,22 @@ function MobileTopBar({ profile, pathname, onLogout, unreadCount }) {
         </Link>
 
         <div className="flex items-center gap-2">
-          {/* Notification bell */}
-          <button className="relative flex h-8 w-8 items-center justify-center rounded-lg">
-            <Bell size={15} style={{ color: "#6a6050" }} />
-            {unreadCount > 0 && (
-              <span
-                className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full"
-                style={{ background: "#e8b84b" }}
-              />
-            )}
-          </button>
+          <motion.button
+            whileTap={{ scale: 0.93 }}
+            onClick={() => setMenuOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5"
+            style={{
+              background: "#141210",
+              borderColor: "#2a2520",
+              color: "#e8b84b",
+            }}
+          >
+            <span className="text-[10px] font-medium uppercase tracking-wide">
+              Switch
+            </span>
+            <ChevronRight size={11} />
+          </motion.button>
 
-          {/* Avatar / menu */}
           <motion.button
             whileTap={{ scale: 0.93 }}
             onClick={() => setMenuOpen(true)}
@@ -521,7 +647,7 @@ function MobileTopBar({ profile, pathname, onLogout, unreadCount }) {
         </div>
       </header>
 
-      {/* Mobile menu drawer */}
+      {/* Drawer */}
       <AnimatePresence>
         {menuOpen && (
           <>
@@ -589,9 +715,29 @@ function MobileTopBar({ profile, pathname, onLogout, unreadCount }) {
                 </motion.button>
               </div>
 
+              {/* Role toggle inside drawer */}
+              <div
+                className="px-4 py-3"
+                style={{ borderBottom: "1px solid #1a1814" }}
+              >
+                <p
+                  className="mb-2 text-[10px] font-medium uppercase tracking-widest"
+                  style={{ color: "#3a342c" }}
+                >
+                  Viewing as
+                </p>
+                <RoleToggle
+                  role={role}
+                  setRole={(r) => {
+                    setRole(r);
+                  }}
+                  collapsed={false}
+                />
+              </div>
+
               {/* Nav links */}
               <div className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
-                {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
+                {visibleItems.map(({ href, icon: Icon, label }) => {
                   const active = isActive(pathname, href);
                   return (
                     <Link
@@ -646,12 +792,12 @@ function MobileTopBar({ profile, pathname, onLogout, unreadCount }) {
                   onClick={onLogout}
                   className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm transition-colors"
                   style={{ color: "#6a6050" }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = "#b05252";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = "#6a6050";
-                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = "#b05252")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = "#6a6050")
+                  }
                 >
                   <LogOut size={15} />
                   Sign out
@@ -665,7 +811,10 @@ function MobileTopBar({ profile, pathname, onLogout, unreadCount }) {
   );
 }
 
-// ─── Main Navbar export ───────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Main Navbar export
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function Navbar({ CURRENT_USER, children }) {
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -673,12 +822,13 @@ export default function Navbar({ CURRENT_USER, children }) {
   );
   const router = useRouter();
   const pathname = usePathname();
+  const { role, setRole } = useRole();
 
   const [profile, setProfile] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
 
-  // ── Detect mobile ──────────────────────────────────────────────────────────
+  // Detect mobile
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
     check();
@@ -686,26 +836,24 @@ export default function Navbar({ CURRENT_USER, children }) {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  // ── Fetch profile ──────────────────────────────────────────────────────────
-  // useEffect(() => {
-  //   async function loadProfile() {
-  //     const {
-  //       data: { user },
-  //     } = await supabase.auth.getUser();
-  //     if (!user) return;
+  // Fetch profile
+  useEffect(() => {
+    async function loadProfile() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, name, department, avatar_url")
+        .eq("id", user.id)
+        .single();
+      setProfile(data);
+    }
+    loadProfile();
+  }, []);
 
-  //     const { data } = await supabase
-  //       .from("profiles")
-  //       .select("id, name, department, avatar_url")
-  //       .eq("id", user.id)
-  //       .single();
-
-  //     setProfile(data);
-  //   }
-  //   loadProfile();
-  // }, [supabase]);
-
-  // ── Unread messages count (realtime) ──────────────────────────────────────
+  // Unread messages (realtime)
   useEffect(() => {
     async function loadUnread() {
       const {
@@ -721,7 +869,6 @@ export default function Navbar({ CURRENT_USER, children }) {
 
       setUnreadCount(count || 0);
 
-      // Subscribe to new messages
       const channel = supabase
         .channel("unread-messages")
         .on(
@@ -739,21 +886,16 @@ export default function Navbar({ CURRENT_USER, children }) {
       return () => supabase.removeChannel(channel);
     }
     loadUnread();
-  }, [supabase]);
+  }, []);
 
-  // ── Logout ─────────────────────────────────────────────────────────────────
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/login");
   };
 
-  // Don't render on auth pages
   const shouldRender = pathname !== "/" && pathname !== "/login";
-  // const isAuthPage = pathname?.startsWith("/login") || (!pathname?.startsWith("/main") && pathname !== "/");
-
   if (!shouldRender || !CURRENT_USER) return <>{children}</>;
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen" style={{ background: "#0e0c0a" }}>
       {isMobile ? (
@@ -763,9 +905,15 @@ export default function Navbar({ CURRENT_USER, children }) {
             pathname={pathname}
             onLogout={handleLogout}
             unreadCount={unreadCount}
+            role={role}
+            setRole={setRole}
           />
           <main className="pb-16 pt-14">{children}</main>
-          <MobileBottomNav pathname={pathname} unreadCount={unreadCount} />
+          <MobileBottomNav
+            pathname={pathname}
+            unreadCount={unreadCount}
+            role={role}
+          />
         </>
       ) : (
         <div className="flex">
@@ -774,8 +922,9 @@ export default function Navbar({ CURRENT_USER, children }) {
             pathname={pathname}
             onLogout={handleLogout}
             unreadCount={unreadCount}
+            role={role}
+            setRole={setRole}
           />
-          {/* Offset content by sidebar width — 220px expanded, 68px collapsed */}
           <main
             className="flex-1 transition-all duration-300"
             style={{ marginLeft: 220 }}

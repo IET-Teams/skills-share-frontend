@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createBrowserClient } from "@supabase/ssr";
+import { useRole } from "@/context/RoleContext";
 import {
   Brain, ChevronRight, ChevronLeft, CheckCircle2, XCircle, Clock,
   Loader2, Sparkles, BarChart3, AlertCircle, BookOpen, Target,
@@ -55,83 +56,6 @@ function getScoreLabel(score) {
 
 function getInitials(name = "") {
   return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "ST";
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// API helpers
-// ─────────────────────────────────────────────────────────────────────────────
-async function generateQuestions({ skillName, level, count = 8 }) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 2000,
-      system: `You are an expert educator creating assessment questions. 
-Return ONLY a valid JSON array. No markdown, no explanation, no preamble.
-Format: [{"id":1,"question":"...","options":["A","B","C","D"],"correct":0,"explanation":"...","difficulty":"easy|medium|hard","topic":"..."}]
-correct is the 0-based index of the correct option.`,
-      messages: [{
-        role: "user",
-        content: `Create ${count} multiple-choice questions to assess a student's understanding of "${skillName}".
-Difficulty level: ${level}.
-Mix easy, medium and hard questions.
-Cover different sub-topics within ${skillName}.
-Each question must have exactly 4 options with one clearly correct answer.
-Include a brief explanation for the correct answer.`,
-      }],
-    }),
-  });
-  const data = await res.json();
-  const text = data.content?.[0]?.text || "[]";
-  const clean = text.replace(/```json|```/g, "").trim();
-  return JSON.parse(clean);
-}
-
-async function generateReport({ skillName, studentName, questions, answers, timeTaken }) {
-  const questionSummary = questions.map((q, i) => ({
-    question: q.question,
-    correct: q.options[q.correct],
-    studentAnswer: answers[i] !== null ? q.options[answers[i]] : "Skipped",
-    isCorrect: answers[i] === q.correct,
-    topic: q.topic,
-    difficulty: q.difficulty,
-  }));
-
-  const score = Math.round((questionSummary.filter((q) => q.isCorrect).length / questions.length) * 100);
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1500,
-      system: `You are an expert tutor generating a detailed student assessment report.
-Return ONLY valid JSON. No markdown, no preamble.
-Format: {
-  "overallSummary": "2-3 sentence overview",
-  "strengths": ["strength1","strength2","strength3"],
-  "weaknesses": ["weakness1","weakness2"],
-  "topicBreakdown": [{"topic":"...","score":0-100,"recommendation":"..."}],
-  "suggestedTopics": ["topic1","topic2","topic3"],
-  "nextSteps": "1-2 sentence actionable advice",
-  "tutorNote": "A personal note from the AI tutor to the student (encouraging, specific)"
-}`,
-      messages: [{
-        role: "user",
-        content: `Generate a tutor report for:
-Student: ${studentName}
-Skill assessed: ${skillName}
-Overall score: ${score}%
-Time taken: ${Math.round(timeTaken / 60)} minutes
-Questions: ${JSON.stringify(questionSummary, null, 2)}`,
-      }],
-    }),
-  });
-  const data = await res.json();
-  const text = data.content?.[0]?.text || "{}";
-  const clean = text.replace(/```json|```/g, "").trim();
-  return { ...JSON.parse(clean), score, timeTaken };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -504,10 +428,18 @@ function TutorReport({ report, questions, answers, studentName, skillName, onRet
   );
 }
 
-// Session selector when no session is given
-function AssessmentSetup({ sessions, onStart }) {
+// Skill selector when no skill is given
+function AssessmentSetup({ skills, onStart, role }) {
   const [selected, setSelected] = useState(null);
   const [level, setLevel] = useState("intermediate");
+
+  // Sort skills so role-relevant ones appear first
+  const sortedSkills = [...skills].sort((a, b) => {
+    const isATeach = a.type === "teach";
+    const isBTeach = b.type === "teach";
+    if (role === "tutor") return isATeach === isBTeach ? 0 : isATeach ? -1 : 1;
+    return isATeach === isBTeach ? 0 : isATeach ? 1 : -1;
+  });
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12" style={{ background: "#0e0c0a" }}>
@@ -517,38 +449,43 @@ function AssessmentSetup({ sessions, onStart }) {
             style={{ background: "rgba(232,184,75,0.1)", border: "1px solid rgba(232,184,75,0.2)" }}>
             <Brain size={24} style={{ color: "#e8b84b" }} />
           </div>
-          <h1 className="text-xl font-medium" style={{ color: "#f5f0e8" }}>AI Assessment</h1>
-          <p className="mt-1 text-sm" style={{ color: "#6a6050" }}>Test your knowledge. Get a full tutor report.</p>
+          <h1 className="text-xl font-medium" style={{ color: "#f5f0e8" }}>Verify your {role === 'tutor' ? 'teaching' : 'skills'}</h1>
+          <p className="mt-1 text-sm" style={{ color: "#6a6050" }}>Test your knowledge and earn proficiency badges.</p>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
           className="rounded-2xl border px-6 py-6 space-y-5" style={{ background: "#0a0908", borderColor: "#2a2520" }}>
 
-          {/* Session / skill picker */}
+          {/* Skill picker */}
           <div>
-            <label className="mb-2 block text-xs font-medium" style={{ color: "#8a8070" }}>Select a completed session to assess</label>
-            {sessions.length === 0 ? (
-              <p className="text-sm italic" style={{ color: "#3a342c" }}>No completed sessions found. You can still enter a skill below.</p>
+            <label className="mb-2 block text-xs font-medium" style={{ color: "#8a8070" }}>Select a skill to verify</label>
+            {sortedSkills.length === 0 ? (
+              <p className="text-sm italic" style={{ color: "#3a342c" }}>No skills found. Add some to your profile first.</p>
             ) : (
-              <div className="space-y-2">
-                {sessions.map((s) => (
-                  <button key={s.id} onClick={() => setSelected(s)}
-                    className="w-full rounded-xl border p-3 text-left transition-all"
-                    style={{
-                      background: selected?.id === s.id ? "rgba(232,184,75,0.08)" : "#141210",
-                      borderColor: selected?.id === s.id ? "rgba(232,184,75,0.3)" : "#2a2520",
-                    }}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>{s.skill?.name || "Session"}</p>
-                        <p className="text-xs" style={{ color: "#6a6050" }}>
-                          with {s.provider?.name || s.requester?.name || "tutor"}
-                        </p>
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                {sortedSkills.map((s) => {
+                  const isTeach = s.type === "teach";
+                  const accent = isTeach ? "#e8b84b" : "#1d9e75";
+                  const accentBg = isTeach ? "rgba(232,184,75,0.1)" : "rgba(29,158,117,0.1)";
+
+                  return (
+                    <button key={s.id} onClick={() => setSelected(s)}
+                      className="w-full rounded-xl border p-3 text-left transition-all"
+                      style={{
+                        background: selected?.id === s.id ? "rgba(255,255,255,0.03)" : "#141210",
+                        borderColor: selected?.id === s.id ? accent : "#2a2520",
+                      }}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium" style={{ color: selected?.id === s.id ? accent : "#f5f0e8" }}>{s.name}</p>
+                        </div>
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: accentBg, color: accent }}>
+                          {isTeach ? "Teaching" : "Learning"}
+                        </span>
                       </div>
-                      <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: "rgba(29,158,117,0.1)", color: "#1d9e75" }}>completed</span>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -561,9 +498,9 @@ function AssessmentSetup({ sessions, onStart }) {
                 <button key={l} onClick={() => setLevel(l)}
                   className="flex-1 rounded-xl py-2 text-xs font-medium capitalize transition-all"
                   style={{
-                    background: level === l ? "#e8b84b" : "#141210",
+                    background: level === l ? "#f5f0e8" : "#141210",
                     color: level === l ? "#0e0c0a" : "#6a6050",
-                    border: `1px solid ${level === l ? "#e8b84b" : "#2a2520"}`,
+                    border: `1px solid ${level === l ? "#f5f0e8" : "#2a2520"}`,
                   }}>
                   {l}
                 </button>
@@ -572,10 +509,10 @@ function AssessmentSetup({ sessions, onStart }) {
           </div>
 
           <motion.button whileTap={{ scale: 0.98 }}
-            onClick={() => onStart({ skillName: selected?.skill?.skill_name || "General Knowledge", sessionId: selected?.id, level })}
-            disabled={!selected && sessions.length > 0}
+            onClick={() => onStart({ skillName: selected?.name, level })}
+            disabled={!selected}
             className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium"
-            style={{ background: "#e8b84b", color: "#0e0c0a", opacity: (!selected && sessions.length > 0) ? 0.4 : 1 }}>
+            style={{ background: "#e8b84b", color: "#0e0c0a", opacity: (!selected) ? 0.4 : 1 }}>
             <Sparkles size={14} /> Start AI Assessment
           </motion.button>
         </motion.div>
@@ -589,17 +526,17 @@ function AssessmentSetup({ sessions, onStart }) {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AssessmentPage() {
   const supabase     = createSupabaseClient();
+  const { role }     = useRole();
   const searchParams = useSearchParams();
   const router       = useRouter();
 
-  const sessionId   = searchParams.get("session");
   const skillParam  = searchParams.get("skill");
 
   // ── State machine: setup → generating → quiz → evaluating → report ──
-  const [stage, setStage]       = useState(sessionId ? "generating" : "setup");
+  const [stage, setStage]       = useState(skillParam ? "generating" : "setup");
   const [currentUser, setCurrentUser] = useState(null);
   const [studentName, setStudentName] = useState("Student");
-  const [sessions,    setSessions]    = useState([]);
+  const [skills,      setSkills]      = useState([]);
   const [skillName,   setSkillName]   = useState(skillParam || "");
   const [level,       setLevel]       = useState("intermediate");
 
@@ -626,47 +563,64 @@ export default function AssessmentPage() {
       const { data: profileData } = await supabase.from("profiles").select("name").eq("id", user.id).single();
       setStudentName(profileData?.name || user.email?.split("@")[0] || "Student");
 
-      // Fetch completed sessions
-      const { data: sessionsData } = await supabase
-        .from("sessions")
-        .select("id, skill:skill_id(name), provider:provider_id(name), requester:requester_id(name)")
-        .or(`requester_id.eq.${user.id},provider_id.eq.${user.id}`)
-        .eq("status", "completed")
-        .order("created_at", { ascending: false });
+      // Fetch user skills (teaching & learning)
+      const { data: userSkillsData } = await supabase
+        .from("user_skills")
+        .select("*, skill:skill_id(*)")
+        .eq("user_id", user.id);
 
-      setSessions(sessionsData || []);
+      const fetchedSkills = (userSkillsData || []).map(us => ({ ...us.skill, type: us.type })).filter(s => s.name);
+      setSkills(fetchedSkills);
 
-      // Auto-start if session param given
-      if (sessionId && sessionsData) {
-        const session = sessionsData.find((s) => s.id === sessionId);
-        if (session?.skill?.name) {
-          setSkillName(session.skill.name);
-          kickoffGeneration(session.skill.name, "intermediate");
+      // Auto-start if skill param given
+      if (skillParam && fetchedSkills) {
+        const matchingSkill = fetchedSkills.find((s) => s.name === skillParam);
+        if (matchingSkill) {
+          setSkillName(matchingSkill.name);
+          kickoffGeneration(matchingSkill.name, "intermediate");
         }
       }
     }
     init();
-  }, []);
+  }, [supabase, skillParam]);
 
   // ── Question generation ────────────────────────────────────────────────────
   const kickoffGeneration = async (skill, lvl) => {
-    setStage("generating");
-    setSkillName(skill);
-    setLevel(lvl);
-    setError("");
-    try {
-      const qs = await generateQuestions({ skillName: skill, level: lvl, count: 8 });
-      setQuestions(qs);
-      setAnswers(new Array(qs.length).fill(null));
-      setTimeLeft(qs.length * 90); // 90 sec per question
-      setStartTime(Date.now());
-      setCurrent(0);
-      setStage("quiz");
-    } catch (e) {
-      setError("Failed to generate questions. Please try again.");
-      setStage("setup");
+  setStage("generating");
+  setSkillName(skill);
+  setLevel(lvl);
+  setError("");
+
+  try {
+    const res = await fetch("/api/assessment/questions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ skillName: skill, level: lvl, count: 8 }),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json();
+      throw new Error(errData.error || `API returned ${res.status}`);
     }
-  };
+
+    const qs = await res.json();
+    
+    if (!qs?.length) {
+      throw new Error("No questions generated");
+    }
+
+    setQuestions(qs);
+    setAnswers(new Array(qs.length).fill(null));
+    setTimeLeft(qs.length * 90);
+    setStartTime(Date.now());
+    setCurrent(0);
+    setStage("quiz");
+  } catch (e) {
+    console.error("kickoffGeneration failed:", e);
+    setError(e.message || "Failed to generate questions. Check your API key.");
+    setStage("setup");
+  }
+};
 
   // ── Timer ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -695,39 +649,44 @@ export default function AssessmentPage() {
   };
 
   // ── Submit quiz ───────────────────────────────────────────────────────────
-  const handleSubmit = async () => {
-    clearInterval(timerRef.current);
-    const elapsed = startTime ? Math.round((Date.now() - startTime) / 1000) : 0;
-    setTimeTaken(elapsed);
-    setStage("evaluating");
+const handleSubmit = async () => {
+  clearInterval(timerRef.current);
+  const elapsed = startTime ? Math.round((Date.now() - startTime) / 1000) : 0;
+  setTimeTaken(elapsed);
+  setStage("evaluating");
 
-    try {
-      const r = await generateReport({
+  try {
+    const res = await fetch("/api/assessment/report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         skillName,
         studentName,
         questions,
         answers,
         timeTaken: elapsed,
+      }),
+    });
+
+    const r = await res.json();
+    setReport(r);
+
+    if (currentUser) {
+      await supabase.from("assessments").insert({
+        user_id: currentUser.id,
+        skill_name: skillName,
+        score: r.score,
+        report: r,
       });
-      setReport(r);
-
-      // Persist report to Supabase (assessments table — add if needed)
-      if (currentUser) {
-        await supabase.from("assessments").insert({
-          user_id: currentUser.id,
-          skill_name: skillName, // Leave as is if assessments table doesn't exist yet, or adjust if it does
-          score: r.score,
-          report: r,
-          session_id: sessionId || null,
-        }).select();
-      }
-
-      setStage("report");
-    } catch (e) {
-      setError("Failed to generate report. Please try again.");
-      setStage("quiz");
     }
-  };
+
+    setStage("report");
+  } catch (e) {
+    console.error("handleSubmit failed:", e);
+    setError("Failed to generate report. Please try again.");
+    setStage("quiz");
+  }
+};
 
   // ── Retake ────────────────────────────────────────────────────────────────
   const handleRetake = () => {
@@ -742,7 +701,7 @@ export default function AssessmentPage() {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   if (stage === "setup") {
-    return <AssessmentSetup sessions={sessions} onStart={({ skillName: sk, level: lv }) => kickoffGeneration(sk, lv)} />;
+    return <AssessmentSetup role={role} skills={skills} onStart={({ skillName: sk, level: lv }) => kickoffGeneration(sk, lv)} />;
   }
 
   if (stage === "generating") {
