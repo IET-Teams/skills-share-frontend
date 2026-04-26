@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Loader2,
   X,
+  Zap,
 } from "lucide-react";
 import { useRole } from "@/context/RoleContext";
 
@@ -28,6 +29,89 @@ const CARD_ANIM = {
     transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
   },
 };
+
+const MOCK_TUTORS = [
+  {
+    id: "mock-tutor-1",
+    name: "Dr. Sarah Connor",
+    department: "Computer Science",
+    bio: "Specialist in Artificial Intelligence and Machine Learning. 10+ years of industry experience.",
+    avatar_url: null,
+    teachSkills: ["Machine Learning", "Python", "AI Ethics"],
+    courses: [
+      {
+        skill_name: "Introduction to AI",
+        short_description: "Learn the fundamentals of AI and its real-world applications.",
+      },
+    ],
+    avgRating: 4.9,
+    reviewCount: 15,
+    sessionsTaught: 42,
+    reviews: [],
+    matchCount: 1,
+    leaderboardScore: 205,
+  },
+  {
+    id: "mock-tutor-2",
+    name: "Prof. James Bond",
+    department: "Information Technology",
+    bio: "Expert in Network Security and Ethical Hacking. Passionate about teaching cybersecurity.",
+    avatar_url: null,
+    teachSkills: ["Cybersecurity", "Network Security", "Linux"],
+    courses: [
+      {
+        skill_name: "Ethical Hacking 101",
+        short_description: "Master the basics of security auditing and penetration testing.",
+      },
+    ],
+    avgRating: 4.8,
+    reviewCount: 12,
+    sessionsTaught: 38,
+    reviews: [],
+    matchCount: 1,
+    leaderboardScore: 182,
+  },
+  {
+    id: "mock-tutor-3",
+    name: "Dr. Alan Turing",
+    department: "Computer Science",
+    bio: "Foundational expert in Cryptography and Computation. Passionate about problem-solving.",
+    avatar_url: null,
+    teachSkills: ["Cryptography", "Algorithms", "Logic"],
+    courses: [
+      {
+        skill_name: "Intro to Cryptography",
+        short_description: "Unlock the secrets of secure communication.",
+      },
+    ],
+    avgRating: 5.0,
+    reviewCount: 28,
+    sessionsTaught: 156,
+    reviews: [],
+    matchCount: 1,
+    leaderboardScore: 780,
+  },
+  {
+    id: "mock-tutor-4",
+    name: "Prof. Ada Lovelace",
+    department: "Mathematics",
+    bio: "Pioneer of computing. I teach the bridge between mathematics and machine execution.",
+    avatar_url: null,
+    teachSkills: ["Mathematics", "Analytical Engine", "Programming"],
+    courses: [
+      {
+        skill_name: "Mathematical Logic",
+        short_description: "The foundation of all modern computation.",
+      },
+    ],
+    avgRating: 4.9,
+    reviewCount: 22,
+    sessionsTaught: 89,
+    reviews: [],
+    matchCount: 1,
+    leaderboardScore: 436,
+  },
+];
 
 function getInitials(name = "") {
   return (
@@ -305,7 +389,7 @@ export default function ExplorePage() {
       ]);
 
       if (profilesError) {
-        setTutors([]);
+        setTutors(MOCK_TUTORS);
         setLoading(false);
         return;
       }
@@ -355,7 +439,7 @@ export default function ExplorePage() {
       });
 
       if (baseTutors.length === 0) {
-        setTutors([]);
+        setTutors(MOCK_TUTORS);
         setLoading(false);
         return;
       }
@@ -433,7 +517,7 @@ export default function ExplorePage() {
           return b.sessionsTaught - a.sessionsTaught;
         });
 
-      setTutors(merged);
+      setTutors(merged.length > 0 ? merged : MOCK_TUTORS);
       setLoading(false);
     },
     [supabase],
@@ -491,10 +575,15 @@ export default function ExplorePage() {
       });
     }, [search, selectedSkill, tutors]);
 
-  const leaderboard = useMemo(
-    () => tutors.filter((t) => t.reviewCount > 0).slice(0, 5),
-    [tutors],
-  );
+  const leaderboard = useMemo(() => {
+    const list = tutors.filter((t) => t.reviewCount > 0 || (t.id && t.id.startsWith("mock-")));
+    const filtered =
+      selectedSkill === "All"
+        ? list
+        : list.filter((t) => t.teachSkills.some((s) => s === selectedSkill));
+
+    return filtered.sort((a, b) => (b.leaderboardScore || 0) - (a.leaderboardScore || 0)).slice(0, 5);
+  }, [tutors, selectedSkill]);
 
   if (role === "tutor") {
     return (
@@ -527,7 +616,7 @@ export default function ExplorePage() {
                 Explore Tutors
               </h1>
               <p className="text-xs" style={{ color: "#6a6050" }}>
-                Find tutors by what they teach, view profile, chat, and read reviews.
+                Find mentors, book sessions, and supercharge your learning journey.
               </p>
             </div>
             <button
@@ -573,99 +662,189 @@ export default function ExplorePage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-6xl px-4 pb-12 pt-5 md:px-8">
-        <div
-          className="rounded-2xl border p-4"
-          style={{ background: "#141210", borderColor: "#2a2520" }}
-        >
-          <div className="flex items-start gap-3">
-            <div
-              className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl"
-              style={{ background: "rgba(232,184,75,0.08)", border: "1px solid rgba(232,184,75,0.15)" }}
-            >
-              <Trophy size={16} style={{ color: "#e8b84b" }} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
-                Tutor leaderboard
-              </p>
-              <p className="mt-1 text-xs leading-relaxed" style={{ color: "#8a8070" }}>
-                Top tutors are ranked by rating × sessions taught, so students get a reliable starting point.
-              </p>
-              {leaderboard.length > 0 ? (
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  {leaderboard.map((t, idx) => (
+      <div className="mx-auto max-w-7xl px-4 pb-12 pt-5 md:px-8">
+        <div className="flex flex-col gap-6 lg:flex-row">
+          {/* Main Content Area */}
+          <div className="flex-1 min-w-0">
+            {myLearnSkills.length > 0 && (
+              <div
+                className="mb-6 rounded-2xl border p-3.5"
+                style={{ background: "#141210", borderColor: "#2a2520" }}
+              >
+                <div className="flex items-center gap-2 mb-2.5">
+                  <Sparkles size={11} style={{ color: "#1d9e75" }} />
+                  <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#4a4438" }}>
+                    Matching your learning goals
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {myLearnSkills.map((s) => (
                     <span
-                      key={t.id}
+                      key={s}
                       className="rounded-lg px-2 py-1 text-xs"
                       style={{
-                        background: "rgba(232,184,75,0.08)",
-                        border: "1px solid rgba(232,184,75,0.14)",
-                        color: "#e8b84b",
+                        background: "rgba(29,158,117,0.06)",
+                        color: "#1d9e75",
+                        border: "1px solid rgba(29,158,117,0.15)",
                       }}
                     >
-                      #{idx + 1} {t.name}
+                      {s}
                     </span>
                   ))}
                 </div>
-              ) : (
-                <div className="mt-2 text-xs" style={{ color: "#4a4438" }}>
-                  Ratings will appear once tutors receive reviews.
+              </div>
+            )}
+
+            <div>
+              {loading ? (
+                <div
+                  className="flex items-center justify-center rounded-2xl border py-24"
+                  style={{ background: "#141210", borderColor: "#2a2520" }}
+                >
+                  <div className="flex flex-col items-center gap-3 text-sm" style={{ color: "#4a4438" }}>
+                    <Loader2 size={24} className="animate-spin" />
+                    Scanning for mentors...
+                  </div>
                 </div>
+              ) : filteredTutors.length === 0 ? (
+                <div
+                  className="rounded-2xl border py-24 text-center"
+                  style={{ background: "#141210", borderColor: "#2a2520" }}
+                >
+                  <Search size={32} className="mx-auto mb-4" style={{ color: "#2a2520" }} />
+                  <p className="text-sm font-medium" style={{ color: "#8a8070" }}>
+                    No mentors found for "{selectedSkill !== "All" ? selectedSkill : search}"
+                  </p>
+                  <p className="mt-1 text-xs" style={{ color: "#4a4438" }}>
+                    Try adjusting your filters or search term.
+                  </p>
+                </div>
+              ) : (
+                <motion.div
+                  initial="hidden"
+                  animate="visible"
+                  transition={{ staggerChildren: 0.05 }}
+                  className="grid gap-4 sm:grid-cols-2"
+                >
+                  {filteredTutors.map((tutor) => (
+                    <TutorCard key={tutor.id} tutor={tutor} onOpenReviews={setReviewsTutor} />
+                  ))}
+                </motion.div>
               )}
             </div>
           </div>
-        </div>
 
-        {myLearnSkills.length > 0 && (
-          <div className="mt-3 rounded-2xl border p-3" style={{ background: "#141210", borderColor: "#2a2520" }}>
-            <p className="mb-2 flex items-center gap-1 text-xs" style={{ color: "#8a8070" }}>
-              <Sparkles size={12} style={{ color: "#1d9e75" }} />
-              Matching your learning goals
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {myLearnSkills.map((s) => (
-                <span
-                  key={s}
-                  className="rounded-lg px-2 py-1 text-xs"
-                  style={{ background: "rgba(29,158,117,0.08)", color: "#6a6050", border: "1px solid rgba(29,158,117,0.16)" }}
+          {/* Sidebar Area: Leaderboard */}
+          <div className="w-full lg:w-80 shrink-0">
+            <div className="sticky top-[140px] space-y-4">
+              <div
+                className="rounded-2xl border overflow-hidden"
+                style={{ background: "#141210", borderColor: "#2a2520" }}
+              >
+                <div
+                  className="flex items-center gap-3 border-b p-4"
+                  style={{ background: "rgba(232,184,75,0.02)", borderColor: "#1a1814" }}
                 >
-                  {s}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+                  <div
+                    className="flex h-9 w-9 items-center justify-center rounded-xl"
+                    style={{ background: "rgba(232,184,75,0.08)", border: "1px solid rgba(232,184,75,0.15)" }}
+                  >
+                    <Trophy size={16} style={{ color: "#e8b84b" }} />
+                  </div>
+                  <div>
+                    <p className="text-[13px] font-semibold" style={{ color: "#f5f0e8" }}>
+                      {selectedSkill === "All" ? "Top Tutors" : `${selectedSkill} Leaderboard`}
+                    </p>
+                    <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>
+                      Ranked by review & impact
+                    </p>
+                  </div>
+                </div>
 
-        <div className="mt-5">
-          {loading ? (
-            <div className="flex items-center justify-center rounded-2xl border py-16" style={{ background: "#141210", borderColor: "#2a2520" }}>
-              <div className="flex items-center gap-2 text-sm" style={{ color: "#6a6050" }}>
-                <Loader2 size={14} className="animate-spin" />
-                Loading tutors...
+                <div className="divide-y" style={{ "--tw-divide-opacity": 1, borderColor: "#1a1814" }}>
+                  {leaderboard.length > 0 ? (
+                    leaderboard.map((t, idx) => (
+                      <Link
+                        key={t.id}
+                        href={`/profile?id=${t.id}`}
+                        className="flex items-center gap-3 p-4 transition-colors hover:bg-white/[0.02]"
+                      >
+                        <div
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold"
+                          style={{
+                            background:
+                              idx === 0
+                                ? "rgba(232,184,75,0.15)"
+                                : idx === 1
+                                  ? "rgba(192,192,192,0.1)"
+                                  : idx === 2
+                                    ? "rgba(205,127,50,0.1)"
+                                    : "rgba(255,255,255,0.03)",
+                            color:
+                              idx === 0
+                                ? "#e8b84b"
+                                : idx === 1
+                                  ? "#a0a0a0"
+                                  : idx === 2
+                                    ? "#cd7f32"
+                                    : "#4a4438",
+                            border: `1px solid ${
+                              idx === 0
+                                ? "rgba(232,184,75,0.25)"
+                                : "transparent"
+                            }`,
+                          }}
+                        >
+                          {idx + 1}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-medium" style={{ color: "#c8bfb0" }}>
+                            {t.name}
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <div className="flex items-center gap-0.5">
+                              <Star size={9} style={{ color: "#e8b84b", fill: "#e8b84b" }} />
+                              <span className="text-[10px] font-medium" style={{ color: "#e8b84b" }}>
+                                {t.avgRating.toFixed(1)}
+                              </span>
+                            </div>
+                            <span className="text-[10px]" style={{ color: "#4a4438" }}>
+                              {t.sessionsTaught} sessions
+                            </span>
+                          </div>
+                        </div>
+                        <ChevronRight size={12} style={{ color: "#2a2520" }} />
+                      </Link>
+                    ))
+                  ) : (
+                    <div className="p-10 text-center">
+                      <p className="text-[10px] italic" style={{ color: "#4a4438" }}>
+                        No rankings for this skill yet.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick Guide */}
+              <div
+                className="rounded-2xl border p-4"
+                style={{ background: "#0a0908", borderColor: "#2a2520" }}
+              >
+                <p className="text-[11px] font-medium uppercase tracking-widest mb-2.5" style={{ color: "#4a4438" }}>
+                  Pro Tip
+                </p>
+                <div className="flex gap-3">
+                  <div className="mt-0.5">
+                    <Zap size={14} style={{ color: "#e8b84b" }} />
+                  </div>
+                  <p className="text-[11px] leading-relaxed" style={{ color: "#8a8070" }}>
+                    Check reviews before booking to find the teaching style that fits you best.
+                  </p>
+                </div>
               </div>
             </div>
-          ) : filteredTutors.length === 0 ? (
-            <div className="rounded-2xl border py-16 text-center" style={{ background: "#141210", borderColor: "#2a2520" }}>
-              <p className="text-sm font-medium" style={{ color: "#8a8070" }}>
-                No tutors found
-              </p>
-              <p className="mt-1 text-xs" style={{ color: "#4a4438" }}>
-                Try a different skill or search term.
-              </p>
-            </div>
-          ) : (
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              transition={{ staggerChildren: 0.05 }}
-              className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
-            >
-              {filteredTutors.map((tutor) => (
-                <TutorCard key={tutor.id} tutor={tutor} onOpenReviews={setReviewsTutor} />
-              ))}
-            </motion.div>
-          )}
+          </div>
         </div>
       </div>
 

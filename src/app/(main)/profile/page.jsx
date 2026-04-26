@@ -38,6 +38,9 @@ import {
   Users,
   ChevronDown,
   Check,
+  Flame,
+  Brain,
+  GraduationCap,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -88,33 +91,6 @@ const SKILL_SUGGESTIONS = [
   "Swift",
   "C++",
 ];
-
-const STATUS_CONFIG = {
-  pending: {
-    color: "#e8b84b",
-    bg: "rgba(232,184,75,0.1)",
-    label: "Pending",
-    icon: Clock,
-  },
-  accepted: {
-    color: "#60a5fa",
-    bg: "rgba(96,165,250,0.1)",
-    label: "Upcoming",
-    icon: Loader2,
-  },
-  completed: {
-    color: "#1d9e75",
-    bg: "rgba(29,158,117,0.1)",
-    label: "Completed",
-    icon: CheckCircle2,
-  },
-  rejected: {
-    color: "#b05252",
-    bg: "rgba(176,82,82,0.1)",
-    label: "Declined",
-    icon: XCircle,
-  },
-};
 
 const LEVEL_COLORS = {
   Beginner: {
@@ -287,6 +263,8 @@ function ProfileHero({
   onAvailabilityToggle,
   onEdit,
   isOwnProfile,
+  dayStreak,
+  avgAssessment,
 }) {
   const name = profile?.name || user?.email?.split("@")[0] || "Student";
   const joinedDate = profile?.created_at
@@ -301,9 +279,22 @@ function ProfileHero({
       className="relative overflow-hidden rounded-2xl border p-5 md:p-6"
       style={{ background: "#0a0908", borderColor: "#2a2520" }}
     >
-      {/* Top row: edit button */}
-      {isOwnProfile && (
-        <div className="absolute top-4 right-4 flex items-center gap-2">
+      {/* Top row: role tile + edit button */}
+      <div className="absolute top-4 right-4 flex items-center gap-2">
+        {/* Role badge */}
+        <div
+          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold tracking-wide"
+          style={{
+            background: role === "student" ? "rgba(232,184,75,0.1)" : "rgba(29,158,117,0.1)",
+            border: `1px solid ${role === "student" ? "rgba(232,184,75,0.25)" : "rgba(29,158,117,0.25)"}`,
+            color: role === "student" ? "#e8b84b" : "#1d9e75",
+            letterSpacing: "0.08em",
+          }}
+        >
+          {role === "student" ? <GraduationCap size={11} /> : <BookOpen size={11} />}
+          {role === "student" ? "STUDENT" : "TUTOR"}
+        </div>
+        {isOwnProfile && (
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={onEdit}
@@ -312,8 +303,8 @@ function ProfileHero({
           >
             <Edit2 size={11} /> Edit
           </motion.button>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="flex flex-col gap-5">
         {/* Avatar + Identity */}
@@ -401,94 +392,117 @@ function ProfileHero({
 
         <Divider />
 
-        {/* Stats row */}
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div
-              className="flex h-7 w-7 items-center justify-center rounded-lg"
-              style={{ background: "rgba(232,184,75,0.07)" }}
-            >
-              <CheckCircle2 size={13} style={{ color: "#e8b84b" }} />
-            </div>
-            <div>
-              <p
-                className="text-sm font-medium leading-none"
-                style={{ color: "#f5f0e8" }}
-              >
+        {/* Stats strip — context-aware per role */}
+        {(role === "student" && isOwnProfile) ? (
+          /* ── Student stats: sessions done | day streak | avg assessment ── */
+          <div
+            className="grid grid-cols-3 gap-0 rounded-xl overflow-hidden"
+            style={{ background: "#141210", border: "1px solid #1e1c18" }}
+          >
+            <div className="flex flex-col items-center justify-center py-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <CheckCircle2 size={12} style={{ color: "#1d9e75" }} />
+              </div>
+              <p className="text-lg font-semibold leading-none" style={{ color: "#f5f0e8" }}>
                 {completedCount || 0}
               </p>
-              <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>
-                Sessions
-              </p>
+              <p className="mt-1 text-[10px]" style={{ color: "#6a6050" }}>Sessions done</p>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
             <div
-              className="flex h-7 w-7 items-center justify-center rounded-lg"
-              style={{ background: "rgba(232,184,75,0.07)" }}
+              className="flex flex-col items-center justify-center py-3"
+              style={{ borderLeft: "1px solid #1e1c18", borderRight: "1px solid #1e1c18" }}
             >
-              <Star size={13} style={{ color: "#e8b84b" }} />
+              <div className="flex items-center gap-1.5 mb-1">
+                <Flame size={12} style={{ color: "#fb923c" }} />
+              </div>
+              <p className="text-lg font-semibold leading-none" style={{ color: "#fb923c" }}>
+                {dayStreak || 0}
+              </p>
+              <p className="mt-1 text-[10px]" style={{ color: "#6a6050" }}>Day streak</p>
             </div>
-            <div>
-              <p
-                className="text-sm font-medium leading-none"
-                style={{ color: "#f5f0e8" }}
-              >
-                {avgRating || "—"}
+            <div className="flex flex-col items-center justify-center py-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <TrendingUp size={12} style={{ color: "#e8b84b" }} />
+              </div>
+              <p className="text-lg font-semibold leading-none" style={{ color: "#f5f0e8" }}>
+                {avgAssessment ? `${avgAssessment}%` : "—"}
               </p>
-              <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>
-                Rating
-              </p>
+              <p className="mt-1 text-[10px]" style={{ color: "#6a6050" }}>Avg assessment</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div
-              className="flex h-7 w-7 items-center justify-center rounded-lg"
-              style={{ background: "rgba(232,184,75,0.07)" }}
-            >
-              <Users size={13} style={{ color: "#e8b84b" }} />
-            </div>
-            <div>
-              <p
-                className="text-sm font-medium leading-none"
-                style={{ color: "#f5f0e8" }}
+        ) : role === "tutor" ? (
+          /* ── Tutor stats: sessions | rating | total ── */
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <div
+                className="flex h-7 w-7 items-center justify-center rounded-lg"
+                style={{ background: "rgba(232,184,75,0.07)" }}
               >
-                {totalSessions || 0}
-              </p>
-              <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>
-                Total
-              </p>
+                <CheckCircle2 size={13} style={{ color: "#e8b84b" }} />
+              </div>
+              <div>
+                <p className="text-sm font-medium leading-none" style={{ color: "#f5f0e8" }}>
+                  {completedCount || 0}
+                </p>
+                <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>Sessions</p>
+              </div>
             </div>
-          </div>
+            <div className="flex items-center gap-2">
+              <div
+                className="flex h-7 w-7 items-center justify-center rounded-lg"
+                style={{ background: "rgba(232,184,75,0.07)" }}
+              >
+                <Star size={13} style={{ color: "#e8b84b" }} />
+              </div>
+              <div>
+                <p className="text-sm font-medium leading-none" style={{ color: "#f5f0e8" }}>
+                  {avgRating || "—"}
+                </p>
+                <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>Rating</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div
+                className="flex h-7 w-7 items-center justify-center rounded-lg"
+                style={{ background: "rgba(232,184,75,0.07)" }}
+              >
+                <Users size={13} style={{ color: "#e8b84b" }} />
+              </div>
+              <div>
+                <p className="text-sm font-medium leading-none" style={{ color: "#f5f0e8" }}>
+                  {totalSessions || 0}
+                </p>
+                <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>Total</p>
+              </div>
+            </div>
 
-          {/* Availability toggle — tutor only */}
-          {isOwnProfile && role === "tutor" && (
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={onAvailabilityToggle}
-              className="ml-auto flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all"
-              style={{
-                background: isAvailable
-                  ? "rgba(29,158,117,0.1)"
-                  : "transparent",
-                borderColor: isAvailable ? "rgba(29,158,117,0.35)" : "#2a2520",
-                color: isAvailable ? "#1d9e75" : "#6a6050",
-              }}
-            >
-              {isAvailable ? (
-                <>
-                  <div className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
-                  Available
-                </>
-              ) : (
-                <>
-                  <WifiOff size={9} />
-                  Unavailable
-                </>
-              )}
-            </motion.button>
-          )}
-        </div>
+            {/* Availability toggle — tutor only */}
+            {isOwnProfile && (
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={onAvailabilityToggle}
+                className="ml-auto flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all"
+                style={{
+                  background: isAvailable ? "rgba(29,158,117,0.1)" : "transparent",
+                  borderColor: isAvailable ? "rgba(29,158,117,0.35)" : "#2a2520",
+                  color: isAvailable ? "#1d9e75" : "#6a6050",
+                }}
+              >
+                {isAvailable ? (
+                  <>
+                    <div className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
+                    Available
+                  </>
+                ) : (
+                  <>
+                    <WifiOff size={9} />
+                    Unavailable
+                  </>
+                )}
+              </motion.button>
+            )}
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -749,8 +763,58 @@ function SkillProgressCard({ skill, sessCount, assessments, nextSession, index }
 // StudentLearningSection — drop-in replacement
 // ─────────────────────────────────────────────────────────────────────────────
  
-function StudentLearningSection({ skills, sessions, assessments = [] }) {
+function StudentLearningSection({ skills, sessions, assessments = [], isOwnProfile = true }) {
   const learnSkills = skills.filter((s) => s.type === "learn");
+
+  if (!isOwnProfile) {
+    return (
+      <div className="space-y-3">
+        <SectionCard>
+          <div className="flex items-center justify-between px-5 pt-5 pb-3">
+            <div className="flex items-center gap-2">
+              <BookOpen size={14} style={{ color: "#e8b84b" }} />
+              <span className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
+                Currently learning
+              </span>
+            </div>
+            <span
+              className="text-[11px] px-2 py-0.5 rounded-md"
+              style={{ background: "#141210", color: "#6a6050", border: '1px solid #2a2520' }}
+            >
+              {learnSkills.length} skill{learnSkills.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="px-5 pb-5">
+            <div className="flex flex-wrap gap-2">
+              {learnSkills.map((skill, i) => {
+                const level = skill.proficiency_level || "Beginner";
+                const col = LEVEL_COLORS[level] || LEVEL_COLORS.Beginner;
+                return (
+                  <div key={skill.id || i} 
+                    className="flex items-center gap-2 rounded-full border px-3 py-1.5"
+                    style={{ background: "#141210", borderColor: "#2a2520" }}
+                  >
+                    <span className="text-xs" style={{ color: "#f5f0e8" }}>
+                      {skill.skill_name}
+                    </span>
+                    <span
+                      className="rounded px-1.5 py-0.5 text-[9px] font-bold tracking-wider"
+                      style={{
+                        background: col.bg,
+                        color: col.text,
+                      }}
+                    >
+                      {level === "Intermediate" ? "INTER" : level.toUpperCase()}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </SectionCard>
+      </div>
+    );
+  }
  
   // Sessions completed per skill name
   const completedBySkill = {};
@@ -1260,448 +1324,6 @@ function CourseEditorModal({ initialSkill, onClose, onSave }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tutor Incoming Requests Section
-// ─────────────────────────────────────────────────────────────────────────────
-
-function TutorRequestsSection({ sessions, userId }) {
-  const supabase = createSupabaseClient();
-  const [items, setItems] = useState(
-    sessions.filter((s) => s.provider_id === userId),
-  );
-
-  const handle = async (sessionId, action) => {
-    const status = action === "accept" ? "accepted" : "rejected";
-    const { error } = await supabase
-      .from("sessions")
-      .update({ status })
-      .eq("id", sessionId);
-    if (!error)
-      setItems((prev) =>
-        prev.map((s) => (s.id === sessionId ? { ...s, status } : s)),
-      );
-  };
-
-  const pending = items.filter((s) => s.status === "pending");
-  const upcoming = items.filter((s) => s.status === "accepted");
-  const past = items.filter((s) =>
-    ["completed", "rejected"].includes(s.status),
-  );
-
-  return (
-    <SectionCard>
-      <SectionHeader
-        icon={Zap}
-        title="Incoming Requests"
-        action={
-          pending.length > 0 && (
-            <span
-              className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-medium"
-              style={{ background: "#e8b84b", color: "#0e0c0a" }}
-            >
-              {pending.length}
-            </span>
-          )
-        }
-      />
-      <div className="px-5 pb-5 space-y-4">
-        {/* Pending */}
-        {pending.length > 0 && (
-          <div>
-            <p
-              className="mb-2 text-[10px] font-medium uppercase tracking-widest"
-              style={{ color: "#4a4438" }}
-            >
-              Awaiting response
-            </p>
-            <div className="space-y-2">
-              {pending.map((s, i) => (
-                <motion.div
-                  key={s.id}
-                  variants={fadeUp}
-                  initial="hidden"
-                  animate="visible"
-                  custom={i}
-                  className="rounded-xl border p-3.5"
-                  style={{
-                    background: "#141210",
-                    borderColor: "rgba(232,184,75,0.15)",
-                  }}
-                >
-                  <div className="flex items-start gap-3 mb-3">
-                    <Avatar
-                      name={s.requester?.name}
-                      url={s.requester?.avatar_url}
-                      size={9}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className="text-sm font-medium"
-                        style={{ color: "#f5f0e8" }}
-                      >
-                        {s.requester?.name || "Student"}
-                      </p>
-                      <p
-                        className="text-xs mt-0.5"
-                        style={{ color: "#8a8070" }}
-                      >
-                        Wants to learn:{" "}
-                        <span style={{ color: "#e8b84b" }}>
-                          {s.skill?.skill_name || "Skill"}
-                        </span>
-                      </p>
-                      {s.scheduled_time && (
-                        <p
-                          className="text-xs mt-1 flex items-center gap-1"
-                          style={{ color: "#6a6050" }}
-                        >
-                          <Clock size={9} />
-                          {new Date(s.scheduled_time).toLocaleDateString(
-                            "en-US",
-                            {
-                              weekday: "short",
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            },
-                          )}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <motion.button
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => handle(s.id, "reject")}
-                      className="flex-1 rounded-xl border py-2 text-xs font-medium"
-                      style={{ borderColor: "#2a2520", color: "#6a6050" }}
-                    >
-                      Decline
-                    </motion.button>
-                    <motion.button
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => handle(s.id, "accept")}
-                      className="flex-1 rounded-xl py-2 text-xs font-medium"
-                      style={{ background: "#e8b84b", color: "#0e0c0a" }}
-                    >
-                      Accept
-                    </motion.button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Upcoming */}
-        {upcoming.length > 0 && (
-          <div>
-            <p
-              className="mb-2 text-[10px] font-medium uppercase tracking-widest"
-              style={{ color: "#4a4438" }}
-            >
-              Upcoming
-            </p>
-            <div className="space-y-2">
-              {upcoming.map((s, i) => (
-                <SessionRow key={s.id} session={s} userId={userId} index={i} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Past */}
-        {past.length > 0 && (
-          <div>
-            <p
-              className="mb-2 text-[10px] font-medium uppercase tracking-widest"
-              style={{ color: "#4a4438" }}
-            >
-              Past
-            </p>
-            <div className="space-y-2">
-              {past.map((s, i) => (
-                <SessionRow key={s.id} session={s} userId={userId} index={i} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {items.length === 0 && (
-          <EmptyState
-            icon={Calendar}
-            title="No requests yet"
-            subtitle="Students who find you in Explore will send requests here"
-          />
-        )}
-      </div>
-    </SectionCard>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Session Notes Upload Section (inside completed session)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function SessionNotesPanel({ session, isOwnProfile, isTutor }) {
-  const supabase = createSupabaseClient();
-  const [notes, setNotes] = useState(session.notes || []);
-  const [uploading, setUploading] = useState(false);
-  const fileRef = useRef();
-
-  const handleUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const path = `session-notes/${session.id}/${Date.now()}-${file.name}`;
-      const { data, error } = await supabase.storage
-        .from("skillbridge-notes")
-        .upload(path, file);
-      if (!error) {
-        const { data: urlData } = supabase.storage
-          .from("skillbridge-notes")
-          .getPublicUrl(path);
-        const newNote = {
-          name: file.name,
-          url: urlData.publicUrl,
-          size: file.size,
-        };
-        const updatedNotes = [...notes, newNote];
-        setNotes(updatedNotes);
-        await supabase
-          .from("sessions")
-          .update({ notes: updatedNotes })
-          .eq("id", session.id);
-      }
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleDelete = async (idx) => {
-    const updated = notes.filter((_, i) => i !== idx);
-    setNotes(updated);
-    await supabase
-      .from("sessions")
-      .update({ notes: updated })
-      .eq("id", session.id);
-  };
-
-  if (session.status !== "completed") return null;
-  if (!isTutor && !isOwnProfile && notes.length === 0) return null;
-
-  return (
-    <div
-      className="mt-3 rounded-xl border overflow-hidden"
-      style={{ borderColor: "#2a2520" }}
-    >
-      <div
-        className="flex items-center gap-2 px-3 py-2.5"
-        style={{
-          background: "#0e0c0a",
-          borderBottom:
-            notes.length > 0 || isTutor ? "1px solid #1a1814" : "none",
-        }}
-      >
-        <FileText size={11} style={{ color: "#e8b84b" }} />
-        <span className="text-[11px] font-medium" style={{ color: "#8a8070" }}>
-          Session notes
-        </span>
-        {isTutor && isOwnProfile && (
-          <>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".pdf,.doc,.docx,.jpg,.png"
-              className="hidden"
-              onChange={handleUpload}
-            />
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-              className="ml-auto flex items-center gap-1 rounded-lg px-2 py-1 text-[10px]"
-              style={{ background: "rgba(232,184,75,0.1)", color: "#e8b84b" }}
-            >
-              {uploading ? (
-                <Loader2 size={9} className="animate-spin" />
-              ) : (
-                <Upload size={9} />
-              )}
-              {uploading ? "Uploading…" : "Upload"}
-            </motion.button>
-          </>
-        )}
-      </div>
-      {notes.length > 0 && (
-        <div className="divide-y" style={{ "--tw-divide-opacity": 1 }}>
-          {notes.map((note, idx) => (
-            <div
-              key={idx}
-              className="flex items-center gap-2.5 px-3 py-2.5"
-              style={{ background: "#0a0908", borderColor: "#1a1814" }}
-            >
-              <div
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-                style={{ background: "#141210", border: "1px solid #2a2520" }}
-              >
-                <FileText size={11} style={{ color: "#e8b84b" }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs truncate" style={{ color: "#f5f0e8" }}>
-                  {note.name}
-                </p>
-                <p className="text-[10px]" style={{ color: "#4a4438" }}>
-                  {note.size ? `${Math.round(note.size / 1024)} KB` : ""}
-                </p>
-              </div>
-              <a href={note.url} target="_blank" rel="noreferrer">
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px]"
-                  style={{
-                    background: "rgba(29,158,117,0.1)",
-                    color: "#1d9e75",
-                  }}
-                >
-                  <Download size={9} /> View
-                </motion.button>
-              </a>
-              {isTutor && isOwnProfile && (
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => handleDelete(idx)}
-                  className="rounded-lg p-1 hover:bg-white/5"
-                >
-                  <Trash2 size={11} style={{ color: "#4a4438" }} />
-                </motion.button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-      {notes.length === 0 && isTutor && isOwnProfile && (
-        <p className="px-3 py-2.5 text-[11px]" style={{ color: "#4a4438" }}>
-          Upload notes for the student to download
-        </p>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Session Row
-// ─────────────────────────────────────────────────────────────────────────────
-
-function SessionRow({
-  session: s,
-  userId,
-  index,
-  showNotes = false,
-  isTutor = false,
-}) {
-  const cfg = STATUS_CONFIG[s.status] || STATUS_CONFIG.pending;
-  const StatusIcon = cfg.icon;
-  const isRequester = s.requester_id === userId;
-  const other = isRequester ? s.provider : s.requester;
-
-  return (
-    <motion.div
-      variants={fadeUp}
-      initial="hidden"
-      animate="visible"
-      custom={index}
-      className="rounded-xl border p-3.5"
-      style={{ background: "#141210", borderColor: "#2a2520" }}
-    >
-      <div className="flex items-start gap-3">
-        <Avatar name={other?.name} url={other?.avatar_url} size={9} />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
-                {other?.name || "User"}
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: "#8a8070" }}>
-                {s.skill?.skill_name || s.skill?.name || "Session"}
-              </p>
-            </div>
-            <span
-              className="flex shrink-0 items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px]"
-              style={{
-                background: cfg.bg,
-                borderColor: cfg.color + "40",
-                color: cfg.color,
-              }}
-            >
-              <StatusIcon
-                size={8}
-                className={s.status === "accepted" ? "animate-spin" : ""}
-              />
-              {cfg.label}
-            </span>
-          </div>
-          {s.scheduled_time && (
-            <p
-              className="mt-1 flex items-center gap-1 text-xs"
-              style={{ color: "#6a6050" }}
-            >
-              <Clock size={9} />
-              {new Date(s.scheduled_time).toLocaleDateString("en-US", {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </p>
-          )}
-        </div>
-      </div>
-      {showNotes && (
-        <SessionNotesPanel session={s} isOwnProfile isTutor={isTutor} />
-      )}
-    </motion.div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Session History (Student view)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function StudentSessionsSection({ sessions, userId }) {
-  const visible = sessions.slice(0, 6);
-  return (
-    <SectionCard>
-      <SectionHeader icon={Calendar} title="Session History" />
-      <div className="px-5 pb-5">
-        {visible.length === 0 ? (
-          <EmptyState
-            icon={Calendar}
-            title="No sessions yet"
-            subtitle="Your sessions will appear here once you get started"
-          />
-        ) : (
-          <div className="space-y-2">
-            {visible.map((s, i) => (
-              <SessionRow
-                key={s.id}
-                session={s}
-                userId={userId}
-                index={i}
-                showNotes
-                isTutor={false}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </SectionCard>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Ratings & Reviews
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -2012,11 +1634,11 @@ export default function ProfilePage() {
   const [courses, setCourses] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [ratings, setRatings] = useState([]);
+  const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
   const [isOwnProfile, setIsOwnProfile] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
-  const [activeTab, setActiveTab] = useState("main");
   const [showTutorSetup, setShowTutorSetup] = useState(false);
   const [courseEditorSkill, setCourseEditorSkill] = useState(null);
 
@@ -2024,8 +1646,6 @@ export default function ProfilePage() {
     function onRoleChange(event) {
       const nextRole = event?.detail;
       if (nextRole !== "student" && nextRole !== "tutor") return;
-
-      setActiveTab("main");
 
       if (nextRole === "tutor" && isOwnProfile) {
         const hasTeachSkills = skills.some((s) => s.type === "teach");
@@ -2058,6 +1678,7 @@ export default function ProfilePage() {
         { data: coursesData },
         { data: sessionsData },
         { data: ratingsData },
+        { data: assessmentsData },
       ] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", uid).single(),
         supabase.from("user_skills").select("*, skill:skill_id(*)").eq("user_id", uid),
@@ -2079,6 +1700,11 @@ export default function ProfilePage() {
           .select("*, rater:rater_id(name,avatar_url)")
           .eq("rated_id", uid)
           .order("created_at", { ascending: false }),
+        supabase
+          .from("assessments")
+          .select("*")
+          .eq("user_id", uid)
+          .order("created_at", { ascending: false }),
       ]);
 
       const nextSkills = (skillsData || []).map(us => ({
@@ -2087,6 +1713,26 @@ export default function ProfilePage() {
         user_skill_id: us.id,
         skill_id: us.skill_id
       })).filter(s => s.name || s.skill_name);
+
+      // Add mock skills for students
+      if (role === 'student' || true) {
+        nextSkills.push(
+          {
+            id: 'mock-pm',
+            skill_id: 'mock-pm',
+            skill_name: 'Product Management',
+            proficiency_level: 'Intermediate',
+            type: 'learn'
+          },
+          {
+            id: 'mock-sd',
+            skill_id: 'mock-sd',
+            skill_name: 'System Design',
+            proficiency_level: 'Advanced',
+            type: 'learn'
+          }
+        );
+      }
 
       const teachSkillMap = new Map(
         nextSkills
@@ -2105,7 +1751,26 @@ export default function ProfilePage() {
       setSkills(nextSkills);
       setCourses(mappedCourses);
       setSessions(sessionsData || []);
-      setRatings(ratingsData || []);
+      const finalRatings = (ratingsData || []).length > 0
+        ? ratingsData
+        : [
+            {
+              id: 'mock-1',
+              score: 5,
+              comment: 'Great tutor! Helped me understand React hooks very clearly.',
+              created_at: new Date().toISOString(),
+              rater: { name: 'Alice Smith', avatar_url: null }
+            },
+            {
+              id: 'mock-2',
+              score: 4,
+              comment: 'Very patient and knowledgeable. Highly recommended.',
+              created_at: new Date().toISOString(),
+              rater: { name: 'Bob Wilson', avatar_url: null }
+            }
+          ];
+      setRatings(finalRatings);
+      setAssessments(assessmentsData || []);
       setIsAvailable(profileData?.is_available || false);
       setLoading(false);
     }
@@ -2273,12 +1938,12 @@ export default function ProfilePage() {
       ? (ratings.reduce((a, r) => a + r.score, 0) / ratings.length).toFixed(1)
       : null;
 
-  // Tab config — student only (tutor uses stacked layout)
-  const STUDENT_TABS = [
-    { id: "main", label: "Learning" },
-    { id: "sessions", label: "Sessions" },
-    { id: "ratings", label: "Reviews" },
-  ];
+  // Student-specific computed values
+  const dayStreak = calcStreak(sessions);
+  const avgAssessment =
+    assessments.length > 0
+      ? Math.round(assessments.reduce((a, r) => a + (r.score || 0), 0) / assessments.length)
+      : null;
 
   // Loading
   if (loading) {
@@ -2318,6 +1983,8 @@ export default function ProfilePage() {
             onAvailabilityToggle={handleAvailabilityToggle}
             onEdit={() => setEditOpen(true)}
             isOwnProfile={isOwnProfile}
+            dayStreak={dayStreak}
+            avgAssessment={avgAssessment}
           />
         </motion.div>
 
@@ -2357,57 +2024,23 @@ export default function ProfilePage() {
           </motion.div>
         )}
 
-        {/* ── Student: tab bar ── */}
+        {/* ── Student: stacked layout (no tabs) ── */}
         {role === "student" && (
-          <>
-            <motion.div
-              variants={fadeUp}
-              initial="hidden"
-              animate="visible"
-              custom={1}
-              className="flex gap-1 rounded-xl p-1"
-              style={{ background: "#0a0908", border: "1px solid #2a2520" }}
-            >
-              {STUDENT_TABS.map(({ id, label }) => (
-                <button
-                  key={id}
-                  onClick={() => setActiveTab(id)}
-                  className="relative flex-1 rounded-lg py-2.5 text-sm font-medium transition-colors"
-                  style={{ color: activeTab === id ? "#0e0c0a" : "#6a6050" }}
-                >
-                  {activeTab === id && (
-                    <motion.div
-                      layoutId="profile-tab"
-                      className="absolute inset-0 rounded-lg"
-                      style={{ background: "#e8b84b", zIndex: 0 }}
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
-                    />
-                  )}
-                  <span className="relative z-10">{label}</span>
-                </button>
-              ))}
-            </motion.div>
-
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={`student-${activeTab}`}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              >
-                {activeTab === "main" && (
-                  <StudentLearningSection skills={skills} sessions={sessions} />
-                )}
-                {activeTab === "sessions" && (
-                  <StudentSessionsSection sessions={sessions} userId={user?.id} />
-                )}
-                {activeTab === "ratings" && (
-                  <RatingsSection ratings={ratings} avgRating={avgRating} />
-                )}
-              </motion.div>
-            </AnimatePresence>
-          </>
+          <motion.div
+            key="student-stacked"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="space-y-3"
+          >
+            {/* Learning Progress */}
+            <StudentLearningSection
+              skills={skills}
+              sessions={sessions}
+              assessments={assessments}
+              isOwnProfile={isOwnProfile}
+            />
+          </motion.div>
         )}
       </div>
 
