@@ -836,31 +836,24 @@ export default function Navbar({ CURRENT_USER, children }) {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  // Fetch profile
   useEffect(() => {
-    async function loadProfile() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, name, department, avatar_url")
-        .eq("id", user.id)
-        .single();
-      setProfile(data);
-    }
-    loadProfile();
-  }, []);
+    let channel;
 
-  // Unread messages (realtime)
-  useEffect(() => {
-    async function loadUnread() {
+    async function setup() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
 
+      const channelName = `navbar-unread-${user.id}`;
+
+      // ← Remove any existing channel with this name before creating a new one
+      const existing = supabase
+        .getChannels()
+        .find((c) => c.topic === `realtime:${channelName}`);
+      if (existing) await supabase.removeChannel(existing);
+
+      // Initial count
       const { count } = await supabase
         .from("messages")
         .select("id", { count: "exact", head: true })
@@ -869,8 +862,9 @@ export default function Navbar({ CURRENT_USER, children }) {
 
       setUnreadCount(count || 0);
 
-      const channel = supabase
-        .channel("unread-messages")
+      // Chain all .on() then .subscribe() once
+      channel = supabase
+        .channel(channelName)
         .on(
           "postgres_changes",
           {
@@ -881,12 +875,33 @@ export default function Navbar({ CURRENT_USER, children }) {
           },
           () => setUnreadCount((c) => c + 1),
         )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "messages",
+            filter: `receiver_id=eq.${user.id}`,
+          },
+          async () => {
+            const { count: fresh } = await supabase
+              .from("messages")
+              .select("id", { count: "exact", head: true })
+              .eq("receiver_id", user.id)
+              .eq("read", false);
+            setUnreadCount(fresh || 0);
+          },
+        )
         .subscribe();
-
-      return () => supabase.removeChannel(channel);
     }
-    loadUnread();
+
+    setup();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
   }, []);
+
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
