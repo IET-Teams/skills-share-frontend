@@ -171,14 +171,13 @@ const TUTOR_MOCK = {
 
 // ── Student Dashboard ─────────────────────────────────────────────────────────
 function StudentDashboard({ data, onSuggestedTutorRequest, requestStatus }) {
-  // Use backend data if populated, otherwise fallback to mock so it always looks pristine
-  const learningSkills = data?.learningSkills?.length ? data.learningSkills : STUDENT_MOCK.learningSkills;
-  const sessionsDone = data?.sessionsDone > 0 ? data.sessionsDone : STUDENT_MOCK.sessionsDone;
-  const avgScore = data?.avgScore ? data.avgScore : STUDENT_MOCK.avgScore;
-  const streak = data?.streak > 0 ? data.streak : STUDENT_MOCK.streak;
-  const nextSession = data?.nextSession || STUDENT_MOCK.nextSession;
-  const suggestedTutor = data?.suggestedTutor || STUDENT_MOCK.suggestedTutor;
-  
+  const learningSkills = data?.learningSkills || [];
+  const sessionsDone   = data?.sessionsDone   ?? 0;
+  const avgScore       = data?.avgScore        || null;
+  const streak         = data?.streak          ?? 0;
+  const nextSession    = data?.nextSession     || null;
+  const suggestedTutor = data?.suggestedTutor  || null;
+
   const inProgressList = learningSkills.map(s => s.skill_name).join(", ");
 
   return (
@@ -306,16 +305,21 @@ function StudentDashboard({ data, onSuggestedTutorRequest, requestStatus }) {
 }
 
 // ── Tutor Dashboard ───────────────────────────────────────────────────────────
-function TutorDashboard({ data, onRequestAction }) {
-  // Graceful fallbacks specifically tailored to match the Figma mockup exactly if real data is sparse.
-  const teachSkills = data?.teachSkills?.length ? data.teachSkills : TUTOR_MOCK.teachSkills;
-  const sessionsTaught = data?.sessionsTaught > 0 ? data.sessionsTaught : TUTOR_MOCK.sessionsTaught;
-  const avgRating = data?.totalRatings > 0 && data?.avgRating ? data.avgRating : TUTOR_MOCK.avgRating;
-  const totalRatings = data?.totalRatings > 0 ? data.totalRatings : TUTOR_MOCK.totalRatings;
-  const pendingRequests = data?.pendingRequests?.length ? data.pendingRequests : TUTOR_MOCK.pendingRequests;
-  const nextSession = data?.nextSession || TUTOR_MOCK.nextSession;
-  
-  const [availability, setAvailability] = useState(true);
+function TutorDashboard({ data, onRequestAction, onAvailabilityToggle }) {
+  const teachSkills     = data?.teachSkills?.length  ? data.teachSkills  : [];
+  const sessionsTaught  = data?.sessionsTaught ?? 0;
+  const avgRating       = data?.avgRating       || "—";
+  const totalRatings    = data?.totalRatings    ?? 0;
+  const pendingRequests = data?.pendingRequests?.length ? data.pendingRequests : [];
+  const nextSession     = data?.nextSession     || null;
+
+  const [availability, setAvailability] = useState(data?.isAvailable ?? true);
+
+  const handleAvailability = () => {
+    const next = !availability;
+    setAvailability(next);
+    onAvailabilityToggle?.(next);
+  };
   
   const offeredList = teachSkills.map(s => s.skill_name).join(", ");
 
@@ -429,7 +433,7 @@ function TutorDashboard({ data, onRequestAction }) {
         </div>
         <motion.div
           whileTap={{ scale: 0.95 }}
-          onClick={() => setAvailability(v => !v)}
+          onClick={handleAvailability}
           style={{
             width: 44, height: 24,
             background: availability ? "#1d9e75" : "#2a2520",
@@ -499,7 +503,7 @@ export default function DashboardPage() {
 
         const { data: userRow } = await supabase
           .from("profiles")
-          .select("id, name, department")
+          .select("id, name, department, role, is_available")
           .eq("id", authUser.id)
           .single();
 
@@ -522,43 +526,47 @@ export default function DashboardPage() {
         const canSwitch = teachSkills.length > 0 || userRow?.role === "tutor";
         setIsTutor(canSwitch);
 
+        // Sessions — use actual column names from schema: student_id, tutor_id, scheduled_at
         const { data: sessions } = await supabase
           .from("sessions")
           .select(`
-            id, status, scheduled_time, skill_id,
-            requester:requester_id ( id, name ),
-            provider:provider_id  ( id, name ),
-            skill:skill_id        ( skill_name:name )
+            id, status, scheduled_at,
+            student:student_id ( id, name ),
+            tutor:tutor_id     ( id, name ),
+            course:course_id   ( id, title, skill_name )
           `)
-          .or(`requester_id.eq.${uid},provider_id.eq.${uid}`)
-          .order("scheduled_time", { ascending: true });
+          .or(`student_id.eq.${uid},tutor_id.eq.${uid}`)
+          .order("scheduled_at", { ascending: true });
 
         const now = new Date();
-        const completedSessions = (sessions || []).filter(s => s.status === "completed");
-        const upcomingAccepted  = (sessions || []).filter(
-          s => s.status === "accepted" && new Date(s.scheduled_time) > now
+        const allSessions = sessions || [];
+        const completedSessions = allSessions.filter(s => s.status === "completed");
+        const upcomingAccepted  = allSessions.filter(
+          s => s.status === "accepted" && s.scheduled_at && new Date(s.scheduled_at) > now
         );
 
+        // Assessments
         const { data: assessments } = await supabase
           .from("assessments")
-          .select("score")
+          .select("score, skill_name")
           .eq("user_id", uid);
 
         const avgAssessment = assessments?.length
-          ? Math.round(assessments.reduce((a, b) => a + b.score, 0) / assessments.length)
+          ? Math.round(assessments.reduce((a, b) => a + (b.score || 0), 0) / assessments.length)
           : null;
 
-        const pendingAsTutor = (sessions || []).filter(
-          s => s.status === "pending" && s.provider?.id === uid
-        ).map(s => ({
-          id: s.id,
-          name: s.requester?.name || "Student",
-          initials: (s.requester?.name || "ST").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase(),
-          skillName: s.skill?.skill_name || "—",
-        }));
+        // Pending requests for tutor
+        const pendingAsTutor = allSessions
+          .filter(s => s.status === "pending" && s.tutor?.id === uid)
+          .map(s => ({
+            id: s.id,
+            name: s.student?.name || "Student",
+            initials: (s.student?.name || "ST").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase(),
+            skillName: s.course?.skill_name || s.course?.title || "—",
+          }));
 
-        const nextAsStudent = upcomingAccepted.find(s => s.requester?.id === uid);
-        const nextAsTutor   = upcomingAccepted.find(s => s.provider?.id === uid);
+        const nextAsStudent = upcomingAccepted.find(s => s.student?.id === uid);
+        const nextAsTutor   = upcomingAccepted.find(s => s.tutor?.id === uid);
 
         const formatTime = (iso) => {
           if (!iso) return "—";
@@ -566,105 +574,101 @@ export default function DashboardPage() {
           const today = new Date();
           const isToday = d.toDateString() === today.toDateString();
           const timeStr = d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
-          return isToday ? `${timeStr} today` : `${d.toLocaleDateString("en-IN", { weekday: "short", month: "short", day: "numeric" })} · ${timeStr}`;
+          return isToday
+            ? `${timeStr} today`
+            : `${d.toLocaleDateString("en-IN", { weekday: "short", month: "short", day: "numeric" })} · ${timeStr}`;
         };
 
-        // Suggested tutor (match first teach skill to one of my learning skills)
+        // Suggested tutor — find a tutor who teaches one of my learning skills
         let suggestedTutor = null;
         if (learnSkills.length > 0) {
-          const learnNames = learnSkills.map((s) => s.skill_name).filter(Boolean);
-
+          const learnNames = learnSkills.map(s => s.skill_name).filter(Boolean);
           const { data: matchedSkills } = await supabase
             .from("user_skills")
-            .select("user_id, skill:skill_id!inner(id, name)")
+            .select("user_id, skill:skill_id(id, name)")
             .eq("type", "teach")
-            .in("skill.name", learnNames)
             .neq("user_id", uid)
-            .limit(1);
+            .limit(5);
 
-          if (matchedSkills?.length) {
-            const picked = matchedSkills[0];
+          const matched = (matchedSkills || []).find(ms =>
+            learnNames.some(ln => (ms.skill?.name || "").toLowerCase() === ln.toLowerCase())
+          );
 
-            const [{ data: tutorUser }, { data: tutorRatings }, { data: tutorSessions }] =
+          if (matched) {
+            const [{ data: tutorUser }, { data: tutorReviews }, { data: tutorSessions }] =
               await Promise.all([
-                supabase.from("profiles").select("id, name").eq("id", picked.user_id).single(),
-                supabase.from("ratings").select("score").eq("rated_id", picked.user_id),
-                supabase
-                  .from("sessions")
-                  .select("id")
-                  .eq("provider_id", picked.user_id)
-                  .eq("status", "completed"),
+                supabase.from("profiles").select("id, name").eq("id", matched.user_id).single(),
+                supabase.from("reviews").select("score").eq("reviewee_id", matched.user_id),
+                supabase.from("sessions").select("id").eq("tutor_id", matched.user_id).eq("status", "completed"),
               ]);
 
-            const tRating = tutorRatings?.length
-              ? (
-                  tutorRatings.reduce((a, b) => a + b.score, 0) /
-                  tutorRatings.length
-                ).toFixed(1)
+            const tRating = tutorReviews?.length
+              ? (tutorReviews.reduce((a, b) => a + (b.score || 0), 0) / tutorReviews.length).toFixed(1)
               : "New";
 
             suggestedTutor = {
-              providerId: picked.user_id,
-              skillId: picked.skill?.id,
-              name: tutorUser?.name || "Tutor",
-              initials: (tutorUser?.name || "TU")
-                .split(" ")
-                .map((w) => w[0])
-                .join("")
-                .slice(0, 2)
-                .toUpperCase(),
-              skill: picked.skill?.name || "Skill",
-              rating: tRating,
-              sessions: tutorSessions?.length || 0,
+              providerId: matched.user_id,
+              skillId:    matched.skill?.id,
+              name:       tutorUser?.name || "Tutor",
+              initials:   (tutorUser?.name || "TU").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase(),
+              skill:      matched.skill?.name || "Skill",
+              rating:     tRating,
+              sessions:   tutorSessions?.length || 0,
             };
           }
         }
 
-        const { data: tutorRatingsAll } = await supabase
-          .from("ratings")
+        // Tutor own ratings — use reviews table (reviewee_id = tutor)
+        const { data: tutorReviewsAll } = await supabase
+          .from("reviews")
           .select("score")
-          .eq("rated_id", uid);
-        const tutorAvgRating = tutorRatingsAll?.length
-          ? (tutorRatingsAll.reduce((a, b) => a + b.score, 0) / tutorRatingsAll.length).toFixed(1)
+          .eq("reviewee_id", uid);
+        const tutorAvgRating = tutorReviewsAll?.length
+          ? (tutorReviewsAll.reduce((a, b) => a + (b.score || 0), 0) / tutorReviewsAll.length).toFixed(1)
           : null;
 
+        // Learning progress — sessions completed as student per skill
         const learnSkillsWithProgress = learnSkills.map(skill => {
-          const done = completedSessions.filter(
-            s => s.requester?.id === uid && s.skill?.skill_name === skill.skill_name
+          const done = completedSessions.filter(s =>
+            s.student?.id === uid &&
+            (s.course?.skill_name || "").toLowerCase() === (skill.skill_name || "").toLowerCase()
           ).length;
           const pct = Math.min(done * 25, 100);
           return {
             ...skill,
             pct,
-            sub: done === 0 ? "Just started" : `Level ${Math.min(Math.floor(done/2) + 1, 4)} of 4 · ${done} session${done > 1 ? "s" : ""} completed`,
+            sub: done === 0
+              ? "Just started"
+              : `Level ${Math.min(Math.floor(done / 2) + 1, 4)} of 4 · ${done} session${done > 1 ? "s" : ""} completed`,
           };
         }).slice(0, 3);
 
         setStudentData({
-          sessionsDone:   completedSessions.filter(s => s.requester?.id === uid).length,
+          sessionsDone:   completedSessions.filter(s => s.student?.id === uid).length,
           avgScore:       avgAssessment,
-          streak:         0, 
+          streak:         0,
           learningSkills: learnSkillsWithProgress,
           nextSession:    nextAsStudent ? {
-            skillName:     nextAsStudent.skill?.skill_name || "—",
-            providerName:  nextAsStudent.provider?.name || "Tutor",
-            providerInitials: (nextAsStudent.provider?.name || "TU").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase(),
-            time:          formatTime(nextAsStudent.scheduled_time),
+            skillName:        nextAsStudent.course?.skill_name || nextAsStudent.course?.title || "Session",
+            providerName:     nextAsStudent.tutor?.name || "Tutor",
+            providerInitials: (nextAsStudent.tutor?.name || "TU").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase(),
+            time:             formatTime(nextAsStudent.scheduled_at),
           } : null,
           suggestedTutor,
         });
 
         setTutorData({
           avgRating:       tutorAvgRating,
-          totalRatings:    tutorRatingsAll?.length || 0,
-          sessionsTaught:  completedSessions.filter(s => s.provider?.id === uid).length,
+          totalRatings:    tutorReviewsAll?.length || 0,
+          sessionsTaught:  completedSessions.filter(s => s.tutor?.id === uid).length,
+          isAvailable:     userRow?.is_available ?? true,
           teachSkills,
           pendingRequests: pendingAsTutor,
           nextSession:     nextAsTutor ? {
-            skillName:      nextAsTutor.skill?.skill_name || "—",
-            studentName:    nextAsTutor.requester?.name || "Student",
-            studentInitials: (nextAsTutor.requester?.name || "ST").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase(),
-            time:           formatTime(nextAsTutor.scheduled_time),
+            skillName:       nextAsTutor.course?.skill_name || nextAsTutor.course?.title || "Session",
+            studentName:     nextAsTutor.student?.name || "Student",
+            studentInitials: (nextAsTutor.student?.name || "ST").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase(),
+            time:            formatTime(nextAsTutor.scheduled_at),
           } : null,
         });
 
@@ -702,9 +706,8 @@ export default function DashboardPage() {
     const { data: existing, error: checkError } = await supabase
       .from("sessions")
       .select("id")
-      .eq("requester_id", user.id)
-      .eq("provider_id", suggestedTutor.providerId)
-      .eq("skill_id", suggestedTutor.skillId)
+      .eq("student_id", user.id)
+      .eq("tutor_id", suggestedTutor.providerId)
       .in("status", ["pending", "accepted"])
       .limit(1);
 
@@ -720,10 +723,9 @@ export default function DashboardPage() {
     }
 
     const { error } = await supabase.from("sessions").insert({
-      requester_id: user.id,
-      provider_id: suggestedTutor.providerId,
-      skill_id: suggestedTutor.skillId,
-      status: "pending",
+      student_id: user.id,
+      tutor_id:   suggestedTutor.providerId,
+      status:     "pending",
     });
 
     if (error) {
@@ -733,6 +735,15 @@ export default function DashboardPage() {
     }
 
     setRequestStatus("success");
+  }
+
+  // ── Toggle Availability ─────────────────────────────────────────────────────
+  async function handleAvailabilityToggle(newValue) {
+    if (!user?.id) return;
+    await supabase
+      .from("profiles")
+      .update({ is_available: newValue })
+      .eq("id", user.id);
   }
 
   // ── Toggle Sidebar via Custom Event ─────────────────────────────────────────
@@ -810,7 +821,7 @@ export default function DashboardPage() {
                 requestStatus={requestStatus}
               />
             ) : (
-              <TutorDashboard key="tutor" data={tutorData} onRequestAction={handleRequestAction} />
+              <TutorDashboard key="tutor" data={tutorData} onRequestAction={handleRequestAction} onAvailabilityToggle={handleAvailabilityToggle} />
             )}
           </AnimatePresence>
         )}
