@@ -575,13 +575,19 @@ function getRank(score) {
 // ─────────────────────────────────────────────────────────────────────────────
 function TutorSkillsSection({ skills, assessments, isOwnProfile }) {
   const router = useRouter();
-  const teachSkills = skills.filter((s) => s.type === "teach");
+  // Show "teach" type skills; fall back to all skills if none have explicit type (backward compat)
+  const explicitTeach = skills.filter((s) => s.type === "teach");
+  const teachSkills = explicitTeach.length > 0 ? explicitTeach : skills.filter((s) => s.name || s.skill_name);
 
-  // Build a map: skill name → latest assessment
+  // Build a map: normalised skill name → latest assessment (highest score wins)
   const latestAssessment = {};
   (assessments || []).forEach((a) => {
-    const key = (a.skill_name || "").toLowerCase();
-    if (!latestAssessment[key] || new Date(a.created_at) > new Date(latestAssessment[key].created_at)) {
+    const key = (a.skill_name || "").toLowerCase().trim();
+    if (!key) return;
+    if (
+      !latestAssessment[key] ||
+      (a.score || 0) > (latestAssessment[key].score || 0)
+    ) {
       latestAssessment[key] = a;
     }
   });
@@ -647,7 +653,7 @@ function TutorSkillsSection({ skills, assessments, isOwnProfile }) {
         ) : (
           <div className="space-y-2.5">
             {teachSkills.map((skill, i) => {
-              const key = (skill.name || skill.skill_name || "").toLowerCase();
+              const key = (skill.name || skill.skill_name || "").toLowerCase().trim();
               const assessment = latestAssessment[key];
               const rank = assessment ? getRank(assessment.score) : null;
               const level = skill.proficiency_level || "Intermediate";

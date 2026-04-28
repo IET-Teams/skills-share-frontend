@@ -733,30 +733,43 @@ export default function AssessmentPage() {
       const { data: profileData } = await supabase.from("profiles").select("name").eq("id", user.id).single();
       setStudentName(profileData?.name || user.email?.split("@")[0] || "Student");
 
-      // Fetch user skills
-      const { data: userSkillsData } = await supabase
+      // Fetch user skills — for tutors only fetch "teach" type skills
+      const skillsQuery = supabase
         .from("user_skills")
         .select("*, skill:skill_id(*)")
         .eq("user_id", user.id);
 
+      // We'll fetch all then filter by role context below
+      const { data: userSkillsData } = await skillsQuery;
+
       // Fetch existing assessments to mark which skills are assessed
       const { data: assessmentData } = await supabase
         .from("assessments")
-        .select("skill_name, score")
+        .select("skill_name, score, skill_id")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
-      const assessedSkillNames = new Set((assessmentData || []).map((a) => a.skill_name?.toLowerCase()));
+      const assessedSkillNames = new Set(
+        (assessmentData || []).map((a) => (a.skill_name || "").toLowerCase().trim())
+      );
       const hasPassed = (assessmentData || []).some((a) => a.score >= 50);
       setHasPassedAssessment(hasPassed);
 
-      const fetchedSkills = (userSkillsData || [])
-        .map((us) => ({
-          id: us.skill_id,
-          name: us.skill?.name || us.skill?.skill_name,
-          level: us.proficiency_level || "Intermediate",
-          assessed: assessedSkillNames.has((us.skill?.name || "").toLowerCase()),
-        }))
+      // Filter to "teach" skills for tutors; show all for students
+      const filtered = (userSkillsData || []).filter((us) =>
+        role === "tutor" ? us.type === "teach" : true
+      );
+
+      const fetchedSkills = filtered
+        .map((us) => {
+          const sName = us.skill?.name || us.skill?.skill_name || "";
+          return {
+            id: us.skill_id,
+            name: sName,
+            level: us.proficiency_level || "Intermediate",
+            assessed: assessedSkillNames.has(sName.toLowerCase().trim()),
+          };
+        })
         .filter((s) => s.name);
 
       setSkills(fetchedSkills);
@@ -861,26 +874,65 @@ export default function AssessmentPage() {
       setReport(r);
 
       if (currentUser) {
-        // Save assessment
-        await supabase.from("assessments").insert({
+        // Resolve skill_id robustly — try by id first, fallback by name
+        let resolvedSkillId = skillId;
+        if (!resolvedSkillId) {
+          const { data: foundSkill } = await supabase
+            .from("skills")
+            .select("id")
+            .or(`name.ilike.${skillName},skill_name.ilike.${skillName}`)
+            .limit(1)
+            .single();
+          resolvedSkillId = foundSkill?.id || null;
+        }
+
+        // Save assessment with skill_id
+        const { error: insertErr } = await supabase.from("assessments").insert({
           user_id: currentUser.id,
           skill_name: skillName,
+          skill_id: resolvedSkillId,
           score: r.score,
           report: r,
         });
+        if (insertErr) {
+          // Fallback: try without skill_id (column may not exist yet)
+          await supabase.from("assessments").insert({
+            user_id: currentUser.id,
+            skill_name: skillName,
+            score: r.score,
+            report: r,
+          });
+        }
 
-        // Update proficiency_level in user_skills if score is high enough
-        if (skillId) {
-          const newLevel = r.score >= 80 ? "Advanced" : r.score >= 55 ? "Intermediate" : "Beginner";
+        // Update proficiency_level in user_skills based on score
+        const newLevel = r.score >= 80 ? "Advanced" : r.score >= 55 ? "Intermediate" : "Beginner";
+        if (resolvedSkillId) {
           await supabase.from("user_skills")
             .update({ proficiency_level: newLevel })
             .eq("user_id", currentUser.id)
-            .eq("skill_id", skillId);
+            .eq("skill_id", resolvedSkillId);
+        } else {
+          // Try matching by skill name in user_skills via join
+          const { data: us } = await supabase
+            .from("user_skills")
+            .select("skill_id, skill:skill_id(name, skill_name)")
+            .eq("user_id", currentUser.id);
+          const match = (us || []).find((row) =>
+            (row.skill?.name || row.skill?.skill_name || "").toLowerCase() === skillName.toLowerCase()
+          );
+          if (match?.skill_id) {
+            await supabase.from("user_skills")
+              .update({ proficiency_level: newLevel })
+              .eq("user_id", currentUser.id)
+              .eq("skill_id", match.skill_id);
+          }
         }
 
         // Mark skill as assessed in local state
         setSkills((prev) => prev.map((s) =>
-          s.id === skillId ? { ...s, assessed: true } : s
+          (s.id === resolvedSkillId || s.name?.toLowerCase() === skillName.toLowerCase())
+            ? { ...s, assessed: true }
+            : s
         ));
 
         if (r.score >= 50) setHasPassedAssessment(true);

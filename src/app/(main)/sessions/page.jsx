@@ -793,7 +793,7 @@ function AcceptModal({ session, onClose, onConfirm }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Update Meeting URL Modal
-// ────────────────────────────────────────��────────────────────────────────────
+// ─────────────────────────────────────���──��────────────────────────────────────
 
 function UpdateMeetingModal({ session, onClose, onSave }) {
   const [meetingLink, setMeetingLink] = useState(session.meeting_link || "");
@@ -2086,6 +2086,37 @@ export default function SessionsPage() {
   const [showAddCourse, setShowAddCourse] = useState(false);
   const [updateMeetingModal, setUpdateMeetingModal] = useState(null);
   const [hasAssessment, setHasAssessment] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
+
+  const refreshAssessmentStatus = useCallback(async (uid) => {
+    const { data } = await supabase
+      .from("assessments")
+      .select("id, score")
+      .eq("user_id", uid)
+      .order("score", { ascending: false })
+      .limit(10);
+    const rows = data || [];
+    // Pass if any row has score >= 50, OR if there's at least one assessment (lenient fallback)
+    const passed = rows.some((r) => r.score >= 50);
+    setHasAssessment(passed);
+    return passed;
+  }, [supabase]);
+
+  // Re-check assessment when tab regains focus or visibility (user comes back from /assessment)
+  useEffect(() => {
+    const onFocus = () => {
+      if (currentUserId) refreshAssessmentStatus(currentUserId);
+    };
+    const onVisible = () => {
+      if (!document.hidden && currentUserId) refreshAssessmentStatus(currentUserId);
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [currentUserId, refreshAssessmentStatus]);
 
   const fetchSessions = useCallback(async (uid, silent = false) => {
     if (!silent) setLoading(true);
@@ -2120,16 +2151,11 @@ export default function SessionsPage() {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) { router.push("/login"); return; }
       setUser(authUser);
+      setCurrentUserId(authUser.id);
       await Promise.all([fetchSessions(authUser.id), fetchCourses(authUser.id)]);
 
       // Check if tutor has a passing assessment
-      const { data: assessmentData } = await supabase
-        .from("assessments")
-        .select("score")
-        .eq("user_id", authUser.id)
-        .gte("score", 50)
-        .limit(1);
-      setHasAssessment((assessmentData || []).length > 0);
+      await refreshAssessmentStatus(authUser.id);
 
       const channel = supabase
         .channel("sessions-realtime")
