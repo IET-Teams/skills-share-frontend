@@ -637,9 +637,19 @@ export default function ExplorePage() {
   const loadData = useCallback(async (uid) => {
     setLoading(true);
 
-    const [{ data: profilesData, error: profilesError }, { data: mySkillsData }] = await Promise.all([
-      supabase.from("profiles").select("id, name, department, bio, avatar_url").neq("id", uid),
-      supabase.from("skills").select("skill_name").eq("user_id", uid).eq("type", "learn"),
+    const [
+      { data: profilesData, error: profilesError },
+      { data: mySkillsData },
+    ] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, name, department, bio, avatar_url")
+        .neq("id", uid),
+      supabase
+        .from("user_skills")
+        .select("skill_name")
+        .eq("user_id", uid)
+        .eq("type", "learn"),
     ]);
 
     if (profilesError) {
