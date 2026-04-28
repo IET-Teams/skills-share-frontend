@@ -638,7 +638,7 @@ const SESSION_TIME_SLOTS = [
 function buildSessionDates(count = 10) {
   const days = [];
   const now = new Date();
-  for (let i = 1; i <= count; i++) {
+  for (let i = 0; i <= count; i++) {
     const d = new Date(now);
     d.setDate(now.getDate() + i);
     d.setHours(0, 0, 0, 0);
@@ -667,11 +667,8 @@ function SessionDatePicker({ onChange, accentColor = "#1d9e75" }) {
   const fmt = (d) => {
     const now = new Date();
     const tomorrow = new Date(now);
-    tomorrow.setDate(now.getDate() + 1);
-    const top =
-      d.toDateString() === tomorrow.toDateString()
-        ? "Tmrw"
-        : d.toLocaleDateString("en-US", { weekday: "short" });
+    // tomorrow.setDate(now.getDate() + 1); //shows today's date
+    const top = d.toLocaleDateString("en-US", { weekday: "short" });
     const bot = d.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
