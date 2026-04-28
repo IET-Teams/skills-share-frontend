@@ -34,6 +34,7 @@ import {
   Trash2,
   Shield,
   Users,
+  RotateCcw,
   Check,
   Flame,
   Brain,
@@ -556,6 +557,156 @@ function StudentLearningSection({ skills, sessions, assessments = [], isOwnProfi
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Assessment rank helpers
+// ─────────────────────────────────────────────────────────────────────────────
+const RANK_CONFIG = [
+  { min: 90, label: "Expert",     color: "#c084fc", bg: "rgba(192,132,252,0.12)", border: "rgba(192,132,252,0.3)" },
+  { min: 75, label: "Proficient", color: "#1d9e75", bg: "rgba(29,158,117,0.12)",  border: "rgba(29,158,117,0.3)" },
+  { min: 60, label: "Competent",  color: "#e8b84b", bg: "rgba(232,184,75,0.12)",  border: "rgba(232,184,75,0.3)" },
+  { min: 0,  label: "Beginner",   color: "#6a6050", bg: "rgba(106,96,80,0.12)",   border: "rgba(106,96,80,0.3)" },
+];
+
+function getRank(score) {
+  return RANK_CONFIG.find((r) => score >= r.min) || RANK_CONFIG[RANK_CONFIG.length - 1];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tutor Skills Section — shows assessed skills + rank
+// ─────────────────────────────────────────────────────────────────────────────
+function TutorSkillsSection({ skills, assessments, isOwnProfile }) {
+  const router = useRouter();
+  const teachSkills = skills.filter((s) => s.type === "teach");
+
+  // Build a map: skill name → latest assessment
+  const latestAssessment = {};
+  (assessments || []).forEach((a) => {
+    const key = (a.skill_name || "").toLowerCase();
+    if (!latestAssessment[key] || new Date(a.created_at) > new Date(latestAssessment[key].created_at)) {
+      latestAssessment[key] = a;
+    }
+  });
+
+  const overallAvg = assessments?.length > 0
+    ? Math.round(assessments.reduce((acc, a) => acc + (a.score || 0), 0) / assessments.length)
+    : null;
+
+  const overallRank = overallAvg !== null ? getRank(overallAvg) : null;
+
+  if (teachSkills.length === 0 && !isOwnProfile) return null;
+
+  return (
+    <SectionCard>
+      <SectionHeader
+        icon={Brain}
+        title="Verified Skills"
+        action={
+          isOwnProfile ? (
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => router.push("/assessment")}
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium"
+              style={{ background: "rgba(232,184,75,0.08)", color: "#e8b84b", border: "1px solid rgba(232,184,75,0.2)" }}
+            >
+              <RotateCcw size={10} /> Re-assess
+            </motion.button>
+          ) : overallRank ? (
+            <div className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1"
+              style={{ background: overallRank.bg, borderColor: overallRank.border }}>
+              <Shield size={11} style={{ color: overallRank.color }} />
+              <span className="text-[11px] font-semibold" style={{ color: overallRank.color }}>
+                {overallRank.label}
+              </span>
+              {overallAvg !== null && (
+                <span className="text-[10px]" style={{ color: overallRank.color, opacity: 0.75 }}>
+                  {overallAvg}%
+                </span>
+              )}
+            </div>
+          ) : null
+        }
+      />
+      <div className="px-5 pb-5">
+        {teachSkills.length === 0 ? (
+          <EmptyState
+            icon={Brain}
+            title="No verified skills yet"
+            subtitle="Complete an assessment to earn your skill rank"
+            action={
+              isOwnProfile ? (
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => router.push("/assessment")}
+                  className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-medium"
+                  style={{ background: "rgba(232,184,75,0.1)", color: "#e8b84b", border: "1px solid rgba(232,184,75,0.2)" }}
+                >
+                  Take Assessment <ArrowRight size={11} />
+                </motion.button>
+              ) : null
+            }
+          />
+        ) : (
+          <div className="space-y-2.5">
+            {teachSkills.map((skill, i) => {
+              const key = (skill.name || skill.skill_name || "").toLowerCase();
+              const assessment = latestAssessment[key];
+              const rank = assessment ? getRank(assessment.score) : null;
+              const level = skill.proficiency_level || "Intermediate";
+
+              return (
+                <motion.div key={skill.id || i} variants={fadeUp} initial="hidden" animate="visible" custom={i}
+                  className="flex items-center justify-between rounded-xl border p-3.5"
+                  style={{ background: "#141210", borderColor: "#2a2520" }}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                      style={{ background: "rgba(232,184,75,0.07)", border: "1px solid rgba(232,184,75,0.12)" }}>
+                      <BookOpen size={13} style={{ color: "#e8b84b" }} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate" style={{ color: "#f5f0e8" }}>
+                        {skill.name || skill.skill_name}
+                      </p>
+                      <span className="text-[10px]" style={{ color: "#6a6050" }}>{level}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {rank ? (
+                      <>
+                        <div className="text-right">
+                          <p className="text-sm font-medium" style={{ color: rank.color }}>{assessment.score}%</p>
+                          <p className="text-[10px]" style={{ color: "#4a4438" }}>last score</p>
+                        </div>
+                        <div className="flex items-center gap-1 rounded-lg border px-2 py-1"
+                          style={{ background: rank.bg, borderColor: rank.border }}>
+                          <Shield size={10} style={{ color: rank.color }} />
+                          <span className="text-[10px] font-semibold" style={{ color: rank.color }}>{rank.label}</span>
+                        </div>
+                      </>
+                    ) : (
+                      isOwnProfile ? (
+                        <motion.button
+                          whileTap={{ scale: 0.97 }}
+                          onClick={() => router.push(`/assessment?skill=${encodeURIComponent(skill.name || skill.skill_name)}`)}
+                          className="flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-medium"
+                          style={{ borderColor: "rgba(232,184,75,0.2)", color: "#e8b84b", background: "rgba(232,184,75,0.05)" }}
+                        >
+                          <Brain size={9} /> Assess
+                        </motion.button>
+                      ) : (
+                        <span className="text-[10px]" style={{ color: "#3a3428" }}>Not assessed</span>
+                      )
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </SectionCard>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Tutor Courses Section (read-only on profile; editing is done in /sessions)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -905,7 +1056,7 @@ function RequestFromProfileModal({ course, tutorId, tutorName, currentUserId, su
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Page
-// ───────��──��──────────────────────────────────────────────────────────────────
+// ───────����─��──────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
   const supabase = createSupabaseClient();
@@ -1066,6 +1217,7 @@ export default function ProfilePage() {
         {/* ── Public profile of a TUTOR ── */}
         {!isOwnProfile && profileRole === "tutor" && (
           <motion.div key="public-tutor" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="space-y-3">
+            <TutorSkillsSection skills={skills} assessments={assessments} isOwnProfile={false} />
             <TutorCoursesSection
               courses={courses}
               isOwnProfile={false}
@@ -1085,6 +1237,7 @@ export default function ProfilePage() {
         {/* ── Own TUTOR profile ── */}
         {isOwnProfile && role === "tutor" && (
           <motion.div key="own-tutor" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="space-y-3">
+            <TutorSkillsSection skills={skills} assessments={assessments} isOwnProfile={true} />
             <TutorCoursesSection courses={courses} isOwnProfile={true} />
             <RatingsSection ratings={ratings} avgRating={avgRating} />
           </motion.div>

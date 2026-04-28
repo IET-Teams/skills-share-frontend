@@ -9,7 +9,8 @@ import {
   Brain, ChevronRight, ChevronLeft, CheckCircle2, XCircle, Clock,
   Loader2, Sparkles, BarChart3, AlertCircle, BookOpen, Target,
   TrendingUp, TrendingDown, Minus, Star, FileText, Send, RotateCcw,
-  User, GraduationCap, Zap, Trophy, CircleDot, Circle,
+  User, GraduationCap, Zap, Trophy, CircleDot, Circle, Plus, X,
+  Shield, ArrowRight, Check,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -20,6 +21,29 @@ const createSupabaseClient = () =>
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   );
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────────
+const SKILL_SUGGESTIONS = [
+  "React", "Python", "Node.js", "Figma", "Machine Learning", "Data Structures",
+  "Flutter", "SQL", "UI/UX Design", "Java", "Kotlin", "Docker", "Git",
+  "TypeScript", "AWS", "MongoDB", "Django", "Spring Boot", "Swift", "C++",
+  "Mathematics", "Physics", "Data Analysis", "Deep Learning", "Next.js",
+];
+
+const LEVELS = ["Beginner", "Intermediate", "Advanced"];
+
+const RANK_CONFIG = [
+  { min: 90, label: "Expert",      color: "#c084fc", bg: "rgba(192,132,252,0.12)", border: "rgba(192,132,252,0.3)" },
+  { min: 75, label: "Proficient",  color: "#1d9e75", bg: "rgba(29,158,117,0.12)",  border: "rgba(29,158,117,0.3)" },
+  { min: 60, label: "Competent",   color: "#e8b84b", bg: "rgba(232,184,75,0.12)",  border: "rgba(232,184,75,0.3)" },
+  { min: 0,  label: "Beginner",    color: "#6a6050", bg: "rgba(106,96,80,0.12)",   border: "rgba(106,96,80,0.3)" },
+];
+
+function getRank(score) {
+  return RANK_CONFIG.find((r) => score >= r.min) || RANK_CONFIG[RANK_CONFIG.length - 1];
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Animation variants
@@ -177,10 +201,11 @@ function QuestionCard({ question, index, total, selected, onSelect, dir }) {
 }
 
 // Tutor report view
-function TutorReport({ report, questions, answers, studentName, skillName, onRetake }) {
+function TutorReport({ report, questions, answers, studentName, skillName, onRetake, onFinish }) {
   const scoreColor = getScoreColor(report.score);
   const scoreLabel = getScoreLabel(report.score);
   const correctCount = answers.filter((a, i) => a === questions[i].correct).length;
+  const rank = getRank(report.score);
 
   return (
     <div className="min-h-screen px-4 py-8 md:px-8" style={{ background: "#0e0c0a" }}>
@@ -204,6 +229,12 @@ function TutorReport({ report, questions, answers, studentName, skillName, onRet
                   {getInitials(studentName)}
                 </div>
                 <span className="text-xs" style={{ color: "#8a8070" }}>{studentName}</span>
+              </div>
+              {/* Rank badge */}
+              <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5"
+                style={{ background: rank.bg, borderColor: rank.border }}>
+                <Shield size={12} style={{ color: rank.color }} />
+                <span className="text-xs font-semibold" style={{ color: rank.color }}>{rank.label} Rank</span>
               </div>
             </div>
 
@@ -386,13 +417,11 @@ function TutorReport({ report, questions, answers, studentName, skillName, onRet
         {report.tutorNote && (
           <motion.div initial="hidden" animate="visible" variants={fadeUp} custom={6}
             className="relative overflow-hidden rounded-2xl border p-5" style={{ background: "#141210", borderColor: "#3a342c" }}>
-            <div className="pointer-events-none absolute right-0 top-0 h-24 w-24 opacity-8"
-              style={{ background: "radial-gradient(circle, #e8b84b 0%, transparent 70%)" }} />
             <div className="mb-2 flex items-center gap-2">
               <Zap size={13} style={{ color: "#e8b84b" }} />
-              <span className="text-xs font-medium" style={{ color: "#e8b84b" }}>Tutor's Note</span>
+              <span className="text-xs font-medium" style={{ color: "#e8b84b" }}>Tutor&apos;s Note</span>
             </div>
-            <p className="text-sm leading-relaxed italic" style={{ color: "#8a8070" }}>"{report.tutorNote}"</p>
+            <p className="text-sm leading-relaxed italic" style={{ color: "#8a8070" }}>&quot;{report.tutorNote}&quot;</p>
             <p className="mt-2 text-xs" style={{ color: "#4a4438" }}>— SkillBridge AI Tutor</p>
           </motion.div>
         )}
@@ -416,106 +445,244 @@ function TutorReport({ report, questions, answers, studentName, skillName, onRet
             style={{ border: "1px solid #2a2520", color: "#6a6050" }}>
             <RotateCcw size={13} /> Retake
           </motion.button>
-          <motion.button whileTap={{ scale: 0.97 }}
-            onClick={() => window.print()}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium"
-            style={{ background: "#e8b84b", color: "#0e0c0a" }}>
-            <Send size={13} /> Share report
-          </motion.button>
+          {onFinish && (
+            <motion.button whileTap={{ scale: 0.97 }} onClick={onFinish}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium"
+              style={{ background: "#e8b84b", color: "#0e0c0a" }}>
+              <ArrowRight size={13} /> Continue
+            </motion.button>
+          )}
         </motion.div>
       </div>
     </div>
   );
 }
 
-// Skill selector when no skill is given
-function AssessmentSetup({ skills, onStart, role }) {
-  const [selected, setSelected] = useState(null);
-  const [level, setLevel] = useState("intermediate");
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 1: Skill Manager — add skills + levels, then pick one to assess
+// ─────────────────────────────────────────────────────────────────────────────
+function SkillSetupStep({ userId, supabase, existingSkills, onStart, isTutor, hasPassedAssessment }) {
+  const [skills, setSkills]           = useState(existingSkills); // [{ id, name, level, assessed }]
+  const [newSkill, setNewSkill]       = useState("");
+  const [newLevel, setNewLevel]       = useState("Intermediate");
+  const [adding, setAdding]           = useState(false);
+  const [addError, setAddError]       = useState("");
+  const [removing, setRemoving]       = useState(null);
+  const [selectedSkill, setSelectedSkill] = useState(null);
+  const [selectedLevel, setSelectedLevel] = useState("intermediate");
 
-  // Sort skills so role-relevant ones appear first
-  const sortedSkills = [...skills].sort((a, b) => {
-    const isATeach = a.type === "teach";
-    const isBTeach = b.type === "teach";
-    if (role === "tutor") return isATeach === isBTeach ? 0 : isATeach ? -1 : 1;
-    return isATeach === isBTeach ? 0 : isATeach ? 1 : -1;
-  });
+  // Find skills that haven't been assessed or can be re-assessed
+  const assessableSkills = skills;
+
+  const handleAddSkill = async () => {
+    const name = newSkill.trim();
+    if (!name) { setAddError("Enter a skill name"); return; }
+    if (skills.some((s) => s.name.toLowerCase() === name.toLowerCase())) {
+      setAddError("Skill already added"); return;
+    }
+    setAdding(true);
+    setAddError("");
+
+    // Find or create in `skills` table, then upsert into `user_skills`
+    let skillId = null;
+    const { data: existing } = await supabase.from("skills").select("id").ilike("name", name).limit(1).single();
+    if (existing?.id) {
+      skillId = existing.id;
+    } else {
+      const { data: created } = await supabase.from("skills").insert({ name, skill_name: name }).select("id").single();
+      skillId = created?.id;
+    }
+
+    if (skillId) {
+      await supabase.from("user_skills").upsert({
+        user_id: userId,
+        skill_id: skillId,
+        type: isTutor ? "teach" : "learn",
+        proficiency_level: newLevel,
+      }, { onConflict: "user_id,skill_id" });
+
+      setSkills((prev) => [...prev, { id: skillId, name, level: newLevel, assessed: false }]);
+    }
+
+    setNewSkill("");
+    setAdding(false);
+  };
+
+  const handleRemoveSkill = async (skillId) => {
+    setRemoving(skillId);
+    await supabase.from("user_skills").delete().eq("user_id", userId).eq("skill_id", skillId);
+    setSkills((prev) => prev.filter((s) => s.id !== skillId));
+    if (selectedSkill?.id === skillId) setSelectedSkill(null);
+    setRemoving(null);
+  };
+
+  const inputStyle = { background: "#141210", borderColor: "#2a2520", color: "#f5f0e8" };
+  const inputCls = "w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition-colors focus:border-[rgba(232,184,75,0.4)]";
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12" style={{ background: "#0e0c0a" }}>
-      <div className="w-full max-w-lg">
-        <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="mb-8 text-center">
+      <div className="w-full max-w-lg space-y-4">
+
+        {/* Header */}
+        <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} className="text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl"
             style={{ background: "rgba(232,184,75,0.1)", border: "1px solid rgba(232,184,75,0.2)" }}>
             <Brain size={24} style={{ color: "#e8b84b" }} />
           </div>
-          <h1 className="text-xl font-medium" style={{ color: "#f5f0e8" }}>Verify your {role === 'tutor' ? 'teaching' : 'skills'}</h1>
-          <p className="mt-1 text-sm" style={{ color: "#6a6050" }}>Test your knowledge and earn proficiency badges.</p>
+          <h1 className="text-xl font-medium" style={{ color: "#f5f0e8" }}>
+            {isTutor ? "Verify Your Teaching Skills" : "Set Up Your Skills"}
+          </h1>
+          <p className="mt-1 text-sm" style={{ color: "#6a6050" }}>
+            {isTutor
+              ? "Add the skills you teach, then complete an AI assessment to earn your rank."
+              : "Add skills you want to learn and track your progress."}
+          </p>
+          {isTutor && !hasPassedAssessment && (
+            <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs"
+              style={{ background: "rgba(232,184,75,0.07)", borderColor: "rgba(232,184,75,0.2)", color: "#e8b84b" }}>
+              <AlertCircle size={11} />
+              Complete an assessment to unlock course creation
+            </div>
+          )}
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-          className="rounded-2xl border px-6 py-6 space-y-5" style={{ background: "#0a0908", borderColor: "#2a2520" }}>
-
-          {/* Skill picker */}
-          <div>
-            <label className="mb-2 block text-xs font-medium" style={{ color: "#8a8070" }}>Select a skill to verify</label>
-            {sortedSkills.length === 0 ? (
-              <p className="text-sm italic" style={{ color: "#3a342c" }}>No skills found. Add some to your profile first.</p>
-            ) : (
-              <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                {sortedSkills.map((s) => {
-                  const isTeach = s.type === "teach";
-                  const accent = isTeach ? "#e8b84b" : "#1d9e75";
-                  const accentBg = isTeach ? "rgba(232,184,75,0.1)" : "rgba(29,158,117,0.1)";
-
-                  return (
-                    <button key={s.id} onClick={() => setSelected(s)}
-                      className="w-full rounded-xl border p-3 text-left transition-all"
-                      style={{
-                        background: selected?.id === s.id ? "rgba(255,255,255,0.03)" : "#141210",
-                        borderColor: selected?.id === s.id ? accent : "#2a2520",
-                      }}>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium" style={{ color: selected?.id === s.id ? accent : "#f5f0e8" }}>{s.name}</p>
-                        </div>
-                        <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: accentBg, color: accent }}>
-                          {isTeach ? "Teaching" : "Learning"}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+        {/* Add skill */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
+          className="rounded-2xl border p-5 space-y-3" style={{ background: "#0a0908", borderColor: "#2a2520" }}>
+          <p className="text-xs font-medium" style={{ color: "#8a8070" }}>Add a skill</p>
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <input
+                value={newSkill}
+                onChange={(e) => { setNewSkill(e.target.value); setAddError(""); }}
+                onKeyDown={(e) => e.key === "Enter" && handleAddSkill()}
+                placeholder="e.g. Python, React…"
+                className={inputCls}
+                style={inputStyle}
+                list="skill-suggestions"
+              />
+              <datalist id="skill-suggestions">
+                {SKILL_SUGGESTIONS.map((s) => <option key={s} value={s} />)}
+              </datalist>
+            </div>
+            <select
+              value={newLevel}
+              onChange={(e) => setNewLevel(e.target.value)}
+              className="rounded-xl border px-2 py-2.5 text-sm outline-none"
+              style={{ ...inputStyle, minWidth: 120 }}
+            >
+              {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
+            </select>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={handleAddSkill}
+              disabled={adding}
+              className="flex items-center justify-center rounded-xl px-3 py-2.5"
+              style={{ background: "#e8b84b", color: "#0e0c0a", minWidth: 44 }}
+            >
+              {adding ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+            </motion.button>
           </div>
+          {addError && <p className="text-xs" style={{ color: "#b05252" }}>{addError}</p>}
 
-          {/* Difficulty level */}
-          <div>
-            <label className="mb-2 block text-xs font-medium" style={{ color: "#8a8070" }}>Difficulty level</label>
-            <div className="flex gap-2">
-              {["beginner", "intermediate", "advanced"].map((l) => (
-                <button key={l} onClick={() => setLevel(l)}
-                  className="flex-1 rounded-xl py-2 text-xs font-medium capitalize transition-all"
+          {/* Added skills list */}
+          {skills.length > 0 && (
+            <div className="space-y-2 mt-1">
+              {skills.map((s) => (
+                <div key={s.id} className="flex items-center justify-between rounded-xl border px-3 py-2.5"
+                  style={{ background: "#141210", borderColor: "#2a2520" }}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm" style={{ color: "#f5f0e8" }}>{s.name}</span>
+                    <span className="rounded-md px-1.5 py-0.5 text-[10px] font-medium"
+                      style={{ background: "rgba(232,184,75,0.08)", color: "#e8b84b", border: "1px solid rgba(232,184,75,0.15)" }}>
+                      {s.level}
+                    </span>
+                    {s.assessed && (
+                      <span className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium"
+                        style={{ background: "rgba(29,158,117,0.1)", color: "#1d9e75" }}>
+                        <Check size={9} /> Assessed
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleRemoveSkill(s.id)}
+                    disabled={removing === s.id}
+                    className="rounded-lg p-1 hover:bg-white/5"
+                  >
+                    {removing === s.id ? <Loader2 size={12} className="animate-spin" style={{ color: "#6a6050" }} /> : <X size={12} style={{ color: "#4a4438" }} />}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+
+        {/* Pick skill to assess */}
+        {assessableSkills.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
+            className="rounded-2xl border p-5 space-y-3" style={{ background: "#0a0908", borderColor: "#2a2520" }}>
+            <p className="text-xs font-medium" style={{ color: "#8a8070" }}>
+              {hasPassedAssessment ? "Take a re-assessment" : "Select a skill to assess"}
+            </p>
+
+            <div className="space-y-2">
+              {assessableSkills.map((s) => (
+                <button key={s.id} onClick={() => setSelectedSkill(s)}
+                  className="w-full rounded-xl border p-3 text-left transition-all"
                   style={{
-                    background: level === l ? "#f5f0e8" : "#141210",
-                    color: level === l ? "#0e0c0a" : "#6a6050",
-                    border: `1px solid ${level === l ? "#f5f0e8" : "#2a2520"}`,
+                    background: selectedSkill?.id === s.id ? "rgba(232,184,75,0.05)" : "#141210",
+                    borderColor: selectedSkill?.id === s.id ? "rgba(232,184,75,0.35)" : "#2a2520",
                   }}>
-                  {l}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm" style={{ color: selectedSkill?.id === s.id ? "#f5f0e8" : "#c8bfb0" }}>{s.name}</span>
+                    <div className="flex items-center gap-2">
+                      {s.assessed && (
+                        <span className="text-[10px]" style={{ color: "#4a4438" }}>Re-assess</span>
+                      )}
+                      <span className="rounded-md px-1.5 py-0.5 text-[10px] font-medium"
+                        style={{ background: "rgba(232,184,75,0.08)", color: "#e8b84b" }}>
+                        {s.level}
+                      </span>
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>
-          </div>
 
-          <motion.button whileTap={{ scale: 0.98 }}
-            onClick={() => onStart({ skillName: selected?.name, level })}
-            disabled={!selected}
-            className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium"
-            style={{ background: "#e8b84b", color: "#0e0c0a", opacity: (!selected) ? 0.4 : 1 }}>
-            <Sparkles size={14} /> Start AI Assessment
-          </motion.button>
-        </motion.div>
+            {/* Difficulty level */}
+            <div>
+              <p className="mb-2 text-xs font-medium" style={{ color: "#8a8070" }}>Assessment difficulty</p>
+              <div className="flex gap-2">
+                {["beginner", "intermediate", "advanced"].map((l) => (
+                  <button key={l} onClick={() => setSelectedLevel(l)}
+                    className="flex-1 rounded-xl py-2 text-xs font-medium capitalize transition-all"
+                    style={{
+                      background: selectedLevel === l ? "#f5f0e8" : "#141210",
+                      color: selectedLevel === l ? "#0e0c0a" : "#6a6050",
+                      border: `1px solid ${selectedLevel === l ? "#f5f0e8" : "#2a2520"}`,
+                    }}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <motion.button whileTap={{ scale: 0.98 }}
+              onClick={() => selectedSkill && onStart({ skillName: selectedSkill.name, skillId: selectedSkill.id, level: selectedLevel })}
+              disabled={!selectedSkill}
+              className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium"
+              style={{ background: "#e8b84b", color: "#0e0c0a", opacity: !selectedSkill ? 0.4 : 1 }}>
+              <Sparkles size={14} /> Start AI Assessment
+            </motion.button>
+          </motion.div>
+        )}
+
+        {assessableSkills.length === 0 && (
+          <div className="rounded-2xl border p-5 text-center" style={{ background: "#0a0908", borderColor: "#2a2520" }}>
+            <Brain size={20} style={{ color: "#3a342c", margin: "0 auto 8px" }} />
+            <p className="text-sm" style={{ color: "#4a4438" }}>Add at least one skill above to start your assessment</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -533,11 +700,14 @@ export default function AssessmentPage() {
   const skillParam  = searchParams.get("skill");
 
   // ── State machine: setup → generating → quiz → evaluating → report ──
-  const [stage, setStage]       = useState(skillParam ? "generating" : "setup");
+  const [stage, setStage]       = useState("setup");
   const [currentUser, setCurrentUser] = useState(null);
   const [studentName, setStudentName] = useState("Student");
-  const [skills,      setSkills]      = useState([]);
+  const [skills,      setSkills]      = useState([]);     // [{id, name, level, assessed}]
+  const [hasPassedAssessment, setHasPassedAssessment] = useState(false);
+
   const [skillName,   setSkillName]   = useState(skillParam || "");
+  const [skillId,     setSkillId]     = useState(null);
   const [level,       setLevel]       = useState("intermediate");
 
   const [questions,   setQuestions]   = useState([]);
@@ -557,70 +727,89 @@ export default function AssessmentPage() {
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { router.push("/login"); return; }
       setCurrentUser(user);
 
       const { data: profileData } = await supabase.from("profiles").select("name").eq("id", user.id).single();
       setStudentName(profileData?.name || user.email?.split("@")[0] || "Student");
 
-      // Fetch user skills (teaching & learning)
+      // Fetch user skills
       const { data: userSkillsData } = await supabase
         .from("user_skills")
         .select("*, skill:skill_id(*)")
         .eq("user_id", user.id);
 
-      const fetchedSkills = (userSkillsData || []).map(us => ({ ...us.skill, type: us.type })).filter(s => s.name);
+      // Fetch existing assessments to mark which skills are assessed
+      const { data: assessmentData } = await supabase
+        .from("assessments")
+        .select("skill_name, score")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      const assessedSkillNames = new Set((assessmentData || []).map((a) => a.skill_name?.toLowerCase()));
+      const hasPassed = (assessmentData || []).some((a) => a.score >= 50);
+      setHasPassedAssessment(hasPassed);
+
+      const fetchedSkills = (userSkillsData || [])
+        .map((us) => ({
+          id: us.skill_id,
+          name: us.skill?.name || us.skill?.skill_name,
+          level: us.proficiency_level || "Intermediate",
+          assessed: assessedSkillNames.has((us.skill?.name || "").toLowerCase()),
+        }))
+        .filter((s) => s.name);
+
       setSkills(fetchedSkills);
 
-      // Auto-start if skill param given
-      if (skillParam && fetchedSkills) {
-        const matchingSkill = fetchedSkills.find((s) => s.name === skillParam);
-        if (matchingSkill) {
-          setSkillName(matchingSkill.name);
-          kickoffGeneration(matchingSkill.name, "intermediate");
+      // Auto-start from ?skill= param
+      if (skillParam) {
+        const match = fetchedSkills.find((s) => s.name?.toLowerCase() === skillParam.toLowerCase());
+        if (match) {
+          kickoffGeneration(match.name, match.id, "intermediate");
+        } else {
+          kickoffGeneration(skillParam, null, "intermediate");
         }
       }
     }
     init();
-  }, [supabase, skillParam]);
+  }, []);
 
   // ── Question generation ────────────────────────────────────────────────────
-  const kickoffGeneration = async (skill, lvl) => {
-  setStage("generating");
-  setSkillName(skill);
-  setLevel(lvl);
-  setError("");
+  const kickoffGeneration = async (skill, sId, lvl) => {
+    setStage("generating");
+    setSkillName(skill);
+    setSkillId(sId || null);
+    setLevel(lvl);
+    setError("");
 
-  try {
-    const res = await fetch("/api/assessment/questions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ skillName: skill, level: lvl, count: 8 }),
-    });
+    try {
+      const res = await fetch("/api/assessment/questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ skillName: skill, level: lvl, count: 8 }),
+      });
 
-    if (!res.ok) {
-      const errData = await res.json();
-      throw new Error(errData.error || `API returned ${res.status}`);
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || `API returned ${res.status}`);
+      }
+
+      const qs = await res.json();
+
+      if (!qs?.length) throw new Error("No questions generated");
+
+      setQuestions(qs);
+      setAnswers(new Array(qs.length).fill(null));
+      setTimeLeft(qs.length * 90);
+      setStartTime(Date.now());
+      setCurrent(0);
+      setStage("quiz");
+    } catch (e) {
+      console.error("kickoffGeneration failed:", e);
+      setError(e.message || "Failed to generate questions. Check your API key.");
+      setStage("setup");
     }
-
-    const qs = await res.json();
-    
-    if (!qs?.length) {
-      throw new Error("No questions generated");
-    }
-
-    setQuestions(qs);
-    setAnswers(new Array(qs.length).fill(null));
-    setTimeLeft(qs.length * 90);
-    setStartTime(Date.now());
-    setCurrent(0);
-    setStage("quiz");
-  } catch (e) {
-    console.error("kickoffGeneration failed:", e);
-    setError(e.message || "Failed to generate questions. Check your API key.");
-    setStage("setup");
-  }
-};
+  };
 
   // ── Timer ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -649,44 +838,61 @@ export default function AssessmentPage() {
   };
 
   // ── Submit quiz ───────────────────────────────────────────────────────────
-const handleSubmit = async () => {
-  clearInterval(timerRef.current);
-  const elapsed = startTime ? Math.round((Date.now() - startTime) / 1000) : 0;
-  setTimeTaken(elapsed);
-  setStage("evaluating");
+  const handleSubmit = async () => {
+    clearInterval(timerRef.current);
+    const elapsed = startTime ? Math.round((Date.now() - startTime) / 1000) : 0;
+    setTimeTaken(elapsed);
+    setStage("evaluating");
 
-  try {
-    const res = await fetch("/api/assessment/report", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        skillName,
-        studentName,
-        questions,
-        answers,
-        timeTaken: elapsed,
-      }),
-    });
-
-    const r = await res.json();
-    setReport(r);
-
-    if (currentUser) {
-      await supabase.from("assessments").insert({
-        user_id: currentUser.id,
-        skill_name: skillName,
-        score: r.score,
-        report: r,
+    try {
+      const res = await fetch("/api/assessment/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          skillName,
+          studentName,
+          questions,
+          answers,
+          timeTaken: elapsed,
+        }),
       });
-    }
 
-    setStage("report");
-  } catch (e) {
-    console.error("handleSubmit failed:", e);
-    setError("Failed to generate report. Please try again.");
-    setStage("quiz");
-  }
-};
+      const r = await res.json();
+      setReport(r);
+
+      if (currentUser) {
+        // Save assessment
+        await supabase.from("assessments").insert({
+          user_id: currentUser.id,
+          skill_name: skillName,
+          score: r.score,
+          report: r,
+        });
+
+        // Update proficiency_level in user_skills if score is high enough
+        if (skillId) {
+          const newLevel = r.score >= 80 ? "Advanced" : r.score >= 55 ? "Intermediate" : "Beginner";
+          await supabase.from("user_skills")
+            .update({ proficiency_level: newLevel })
+            .eq("user_id", currentUser.id)
+            .eq("skill_id", skillId);
+        }
+
+        // Mark skill as assessed in local state
+        setSkills((prev) => prev.map((s) =>
+          s.id === skillId ? { ...s, assessed: true } : s
+        ));
+
+        if (r.score >= 50) setHasPassedAssessment(true);
+      }
+
+      setStage("report");
+    } catch (e) {
+      console.error("handleSubmit failed:", e);
+      setError("Failed to generate report. Please try again.");
+      setStage("quiz");
+    }
+  };
 
   // ── Retake ────────────────────────────────────────────────────────────────
   const handleRetake = () => {
@@ -698,10 +904,30 @@ const handleSubmit = async () => {
     setStage("setup");
   };
 
+  // ── After report, tutor can go to sessions to add courses ─────────────────
+  const handleFinish = () => {
+    if (role === "tutor") {
+      router.push("/sessions");
+    } else {
+      router.push("/profile");
+    }
+  };
+
   // ─── Render ───────────────────────────────────────────────────────────────
 
   if (stage === "setup") {
-    return <AssessmentSetup role={role} skills={skills} onStart={({ skillName: sk, level: lv }) => kickoffGeneration(sk, lv)} />;
+    return (
+      <SkillSetupStep
+        userId={currentUser?.id}
+        supabase={supabase}
+        existingSkills={skills}
+        isTutor={role === "tutor"}
+        hasPassedAssessment={hasPassedAssessment}
+        onStart={({ skillName: sk, skillId: sId, level: lv }) =>
+          kickoffGeneration(sk, sId, lv)
+        }
+      />
+    );
   }
 
   if (stage === "generating") {
@@ -727,7 +953,17 @@ const handleSubmit = async () => {
   }
 
   if (stage === "report" && report) {
-    return <TutorReport report={report} questions={questions} answers={answers} studentName={studentName} skillName={skillName} onRetake={handleRetake} />;
+    return (
+      <TutorReport
+        report={report}
+        questions={questions}
+        answers={answers}
+        studentName={studentName}
+        skillName={skillName}
+        onRetake={handleRetake}
+        onFinish={handleFinish}
+      />
+    );
   }
 
   // ── Quiz stage ─────────────────────────────────────────────────────────────
