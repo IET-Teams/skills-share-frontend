@@ -1122,6 +1122,9 @@ export default function ProfilePage() {
         supabase.from("assessments").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
       ]);
 
+      console.log(skillsData, "all skills data");
+      
+
       const nextSkills = (skillsData || [])
         .map((us) => ({ ...us.skill, type: us.type, user_skill_id: us.id, skill_id: us.skill_id }))
         .filter((s) => s.name || s.skill_name);
