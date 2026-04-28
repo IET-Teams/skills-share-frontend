@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -178,6 +178,114 @@ function ReviewsModal({ tutor, onClose }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Date + Time Slot Picker (shared)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TIME_SLOTS = [
+  { id: "morning",   label: "Morning",   sub: "8 – 12 AM",  hour: 9  },
+  { id: "afternoon", label: "Afternoon", sub: "12 – 5 PM",  hour: 14 },
+  { id: "evening",   label: "Evening",   sub: "5 – 9 PM",   hour: 18 },
+];
+
+function buildDateOptions(count = 10) {
+  const days = [];
+  const now = new Date();
+  // start from tomorrow
+  for (let i = 1; i <= count; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() + i);
+    d.setHours(0, 0, 0, 0);
+    days.push(d);
+  }
+  return days;
+}
+
+function DateSlotPicker({ value, onChange }) {
+  const dates = useMemo(() => buildDateOptions(10), []);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedSlot, setSelectedSlot] = useState(null);
+
+  // sync upward whenever both are chosen
+  const pick = (date, slot) => {
+    const d = date || selectedDate;
+    const s = slot !== undefined ? slot : selectedSlot;
+    setSelectedDate(d);
+    if (slot !== undefined) setSelectedSlot(s);
+    if (d && s !== null) {
+      const dt = new Date(d);
+      dt.setHours(TIME_SLOTS[s].hour, 0, 0, 0);
+      onChange(dt.toISOString());
+    }
+  };
+
+  const fmt = (d) => {
+    const today = new Date();
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+    if (d.toDateString() === tomorrow.toDateString()) return { top: "Tomorrow", bot: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) };
+    return { top: d.toLocaleDateString("en-US", { weekday: "short" }), bot: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) };
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* Date strip */}
+      <div>
+        <p className="mb-2 text-xs font-medium" style={{ color: "#8a8070" }}>Select a date</p>
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-0.5 px-0.5" style={{ scrollbarWidth: "none" }}>
+          {dates.map((d, i) => {
+            const { top, bot } = fmt(d);
+            const active = selectedDate?.toDateString() === d.toDateString();
+            return (
+              <motion.button
+                key={i}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => pick(d, undefined)}
+                className="flex shrink-0 flex-col items-center gap-0.5 rounded-xl border px-3 py-2.5 transition-colors"
+                style={{
+                  background: active ? "#e8b84b" : "#141210",
+                  borderColor: active ? "#e8b84b" : "#2a2520",
+                  minWidth: 56,
+                }}
+              >
+                <span className="text-[10px] font-semibold" style={{ color: active ? "#0e0c0a" : "#6a6050" }}>{top}</span>
+                <span className="text-xs font-bold" style={{ color: active ? "#0e0c0a" : "#f5f0e8" }}>{bot.split(" ")[1]}</span>
+                <span className="text-[9px]" style={{ color: active ? "#0e0c0a80" : "#3a3428" }}>{bot.split(" ")[0]}</span>
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Time slots */}
+      {selectedDate && (
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+          <p className="mb-2 text-xs font-medium" style={{ color: "#8a8070" }}>Preferred time</p>
+          <div className="grid grid-cols-3 gap-2">
+            {TIME_SLOTS.map((s, i) => {
+              const active = selectedSlot === i;
+              return (
+                <motion.button
+                  key={s.id}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => pick(undefined, i)}
+                  className="flex flex-col items-center gap-0.5 rounded-xl border py-3 transition-colors"
+                  style={{
+                    background: active ? "rgba(232,184,75,0.1)" : "#141210",
+                    borderColor: active ? "rgba(232,184,75,0.5)" : "#2a2520",
+                  }}
+                >
+                  <span className="text-xs font-semibold" style={{ color: active ? "#e8b84b" : "#c8bfb0" }}>{s.label}</span>
+                  <span className="text-[10px]" style={{ color: active ? "#c9a040" : "#4a4438" }}>{s.sub}</span>
+                </motion.button>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Request Course Modal
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -189,7 +297,7 @@ function RequestCourseModal({ tutor, course, currentUserId, supabase, onClose, o
   const [err, setErr] = useState("");
 
   const handleSubmit = async () => {
-    if (!preferredTime) { setErr("Please select a preferred time slot."); return; }
+    if (!preferredTime) { setErr("Please select a date and time slot."); return; }
     setSubmitting(true);
     setErr("");
 
@@ -198,10 +306,9 @@ function RequestCourseModal({ tutor, course, currentUserId, supabase, onClose, o
       tutor_id: tutor.id,
       status: "pending",
       tutor_message: message.trim() || null,
-      preferred_time: new Date(preferredTime).toISOString(),
+      preferred_time: preferredTime,
     };
 
-    // attach course_id if available (sessions table has no skill_id column)
     if (course?.id && !course.id.startsWith("mock")) {
       payload.course_id = course.id;
     }
@@ -224,12 +331,12 @@ function RequestCourseModal({ tutor, course, currentUserId, supabase, onClose, o
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <motion.div
-        className="w-full max-w-sm rounded-2xl border overflow-hidden"
+        className="w-full max-w-sm rounded-2xl border overflow-hidden max-h-[90vh] flex flex-col"
         style={{ background: "#0a0908", borderColor: "#2a2520" }}
         initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
         transition={{ type: "spring", bounce: 0.18, duration: 0.45 }}
       >
-        <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: "#1a1814" }}>
+        <div className="flex items-center justify-between border-b px-5 py-4 shrink-0" style={{ borderColor: "#1a1814" }}>
           <div>
             <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>Request Course</p>
             <p className="text-xs mt-0.5" style={{ color: "#6a6050" }}>
@@ -255,23 +362,15 @@ function RequestCourseModal({ tutor, course, currentUserId, supabase, onClose, o
             <p className="text-xs" style={{ color: "#6a6050" }}>The tutor will respond soon</p>
           </div>
         ) : (
-          <div className="p-5 space-y-3.5">
+          <div className="overflow-y-auto p-5 space-y-4">
             {/* Course summary */}
             {(course?.short_description || course?.description) && (
-              <div
-                className="rounded-xl border p-3"
-                style={{ background: "#141210", borderColor: "#2a2520" }}
-              >
+              <div className="rounded-xl border p-3" style={{ background: "#141210", borderColor: "#2a2520" }}>
                 <div className="flex items-center gap-2 mb-1.5">
                   <BookOpen size={11} style={{ color: "#e8b84b" }} />
-                  <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: "#4a4438" }}>
-                    Course
-                  </span>
+                  <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: "#4a4438" }}>Course</span>
                   {course?.level && (
-                    <span
-                      className="ml-auto rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
-                      style={{ background: "rgba(232,184,75,0.1)", color: "#e8b84b" }}
-                    >
+                    <span className="ml-auto rounded-md px-1.5 py-0.5 text-[9px] font-semibold" style={{ background: "rgba(232,184,75,0.1)", color: "#e8b84b" }}>
                       {course.level}
                     </span>
                   )}
@@ -282,18 +381,7 @@ function RequestCourseModal({ tutor, course, currentUserId, supabase, onClose, o
               </div>
             )}
 
-            <div>
-              <label className="mb-1.5 block text-xs font-medium" style={{ color: "#8a8070" }}>
-                Preferred time slot *
-              </label>
-              <input
-                type="datetime-local"
-                value={preferredTime}
-                onChange={(e) => setPreferredTime(e.target.value)}
-                className={inputCls}
-                style={inputStyle}
-              />
-            </div>
+            <DateSlotPicker value={preferredTime} onChange={setPreferredTime} />
 
             <div>
               <label className="mb-1.5 block text-xs font-medium" style={{ color: "#8a8070" }}>

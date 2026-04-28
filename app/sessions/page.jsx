@@ -576,6 +576,106 @@ function RateModal({ session, raterId, onClose, onDone }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Date + Time Slot Picker
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SESSION_TIME_SLOTS = [
+  { id: "morning",   label: "Morning",   sub: "8 – 12 AM",  hour: 9  },
+  { id: "afternoon", label: "Afternoon", sub: "12 – 5 PM",  hour: 14 },
+  { id: "evening",   label: "Evening",   sub: "5 – 9 PM",   hour: 18 },
+];
+
+function buildSessionDates(count = 10) {
+  const days = [];
+  const now = new Date();
+  for (let i = 1; i <= count; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() + i);
+    d.setHours(0, 0, 0, 0);
+    days.push(d);
+  }
+  return days;
+}
+
+function SessionDatePicker({ onChange, accentColor = "#1d9e75" }) {
+  const dates = buildSessionDates(10);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedSlot, setSelectedSlot] = useState(null);
+
+  const pick = (date, slotIdx) => {
+    const d = date !== undefined ? date : selectedDate;
+    const s = slotIdx !== undefined ? slotIdx : selectedSlot;
+    if (date !== undefined) setSelectedDate(date);
+    if (slotIdx !== undefined) setSelectedSlot(slotIdx);
+    if (d && s !== null && s !== undefined) {
+      const dt = new Date(d);
+      dt.setHours(SESSION_TIME_SLOTS[s].hour, 0, 0, 0);
+      onChange(dt.toISOString());
+    }
+  };
+
+  const fmt = (d) => {
+    const now = new Date();
+    const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);
+    const top = d.toDateString() === tomorrow.toDateString() ? "Tmrw" : d.toLocaleDateString("en-US", { weekday: "short" });
+    const bot = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return { top, bot };
+  };
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="mb-2 text-xs font-medium" style={{ color: "#8a8070" }}>Proposed date</p>
+        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+          {dates.map((d, i) => {
+            const { top, bot } = fmt(d);
+            const active = selectedDate?.toDateString() === d.toDateString();
+            return (
+              <motion.button
+                key={i}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => pick(d, undefined)}
+                className="flex shrink-0 flex-col items-center gap-0.5 rounded-xl border px-3 py-2.5 transition-colors"
+                style={{ background: active ? "#e8b84b" : "#141210", borderColor: active ? "#e8b84b" : "#2a2520", minWidth: 54 }}
+              >
+                <span className="text-[10px] font-semibold" style={{ color: active ? "#0e0c0a" : "#6a6050" }}>{top}</span>
+                <span className="text-xs font-bold" style={{ color: active ? "#0e0c0a" : "#f5f0e8" }}>{bot.split(" ")[1]}</span>
+                <span className="text-[9px]" style={{ color: active ? "rgba(0,0,0,0.45)" : "#3a3428" }}>{bot.split(" ")[0]}</span>
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+      {selectedDate && (
+        <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
+          <p className="mb-2 text-xs font-medium" style={{ color: "#8a8070" }}>Proposed time</p>
+          <div className="grid grid-cols-3 gap-2">
+            {SESSION_TIME_SLOTS.map((s, i) => {
+              const active = selectedSlot === i;
+              return (
+                <motion.button
+                  key={s.id}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => pick(undefined, i)}
+                  className="flex flex-col items-center gap-0.5 rounded-xl border py-3 transition-colors"
+                  style={{
+                    background: active ? `${accentColor}18` : "#141210",
+                    borderColor: active ? `${accentColor}70` : "#2a2520",
+                  }}
+                >
+                  <span className="text-xs font-semibold" style={{ color: active ? accentColor : "#c8bfb0" }}>{s.label}</span>
+                  <span className="text-[10px]" style={{ color: active ? accentColor : "#4a4438" }}>{s.sub}</span>
+                </motion.button>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Accept & Propose Time Modal (Tutor → on accepting a request)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -604,7 +704,7 @@ function AcceptModal({ session, onClose, onConfirm }) {
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <motion.div
-        className="w-full max-w-sm rounded-2xl border overflow-hidden"
+        className="w-full max-w-sm rounded-2xl border overflow-hidden max-h-[90vh] flex flex-col"
         style={{ background: "#0a0908", borderColor: "#2a2520" }}
         initial={{ y: 60, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -612,7 +712,7 @@ function AcceptModal({ session, onClose, onConfirm }) {
         transition={{ type: "spring", bounce: 0.18, duration: 0.45 }}
       >
         <div
-          className="flex items-center justify-between border-b px-5 py-4"
+          className="flex items-center justify-between border-b px-5 py-4 shrink-0"
           style={{ borderColor: "#1a1814" }}
         >
           <div>
@@ -628,19 +728,8 @@ function AcceptModal({ session, onClose, onConfirm }) {
           </button>
         </div>
 
-        <div className="p-5 space-y-3.5">
-          <div>
-            <label className="mb-1.5 block text-xs font-medium" style={{ color: "#8a8070" }}>
-              Proposed date & time
-            </label>
-            <input
-              type="datetime-local"
-              value={scheduledTime}
-              onChange={(e) => setScheduledTime(e.target.value)}
-              className={inputCls}
-              style={inputStyle}
-            />
-          </div>
+        <div className="overflow-y-auto p-5 space-y-3.5">
+          <SessionDatePicker onChange={setScheduledTime} accentColor="#1d9e75" />
 
           <div>
             <label className="mb-1.5 block text-xs font-medium" style={{ color: "#8a8070" }}>
@@ -901,10 +990,12 @@ function canJoinSession(s) {
 
 function StudentSessionCard({ session: s, userId, onRate, index }) {
   const other = s.student_id === userId ? s.tutor : s.student;
+  const isPending = s.status === "pending";
   const isUpcoming = s.status === "accepted";
   const isCompleted = s.status === "completed";
   const jn = canJoinSession(s);
   const timeStr = fmtTime(s.scheduled_at);
+  const preferredStr = fmtTime(s.preferred_time);
   const courseTitle = s.course?.title || s.course?.skill_name || "Session";
 
   return (
@@ -915,8 +1006,12 @@ function StudentSessionCard({ session: s, userId, onRate, index }) {
       custom={index}
       layout
       className="rounded-2xl border overflow-hidden"
-      style={{ background: "#0a0908", borderColor: "#2a2520" }}
+      style={{
+        background: "#0a0908",
+        borderColor: isPending ? "rgba(232,184,75,0.2)" : "#2a2520",
+      }}
     >
+      {isPending && <div style={{ height: 2, background: "rgba(232,184,75,0.35)" }} />}
       {isUpcoming && <div style={{ height: 2, background: "rgba(29,158,117,0.5)" }} />}
 
       <div className="p-4">
@@ -934,7 +1029,12 @@ function StudentSessionCard({ session: s, userId, onRate, index }) {
               </div>
               <StatusBadge status={s.status} />
             </div>
-            {timeStr && (
+            {isPending && preferredStr && (
+              <p className="mt-1.5 flex items-center gap-1.5 text-xs" style={{ color: "#8a8070" }}>
+                <Clock size={10} /> Preferred: {preferredStr}
+              </p>
+            )}
+            {!isPending && timeStr && (
               <p className="mt-1.5 flex items-center gap-1.5 text-xs" style={{ color: "#6a6050" }}>
                 <Calendar size={10} /> {timeStr}
               </p>
@@ -954,6 +1054,17 @@ function StudentSessionCard({ session: s, userId, onRate, index }) {
             )}
           </div>
         </div>
+
+        {/* Pending — awaiting tutor */}
+        {isPending && (
+          <div
+            className="mt-3 flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-medium"
+            style={{ background: "rgba(232,184,75,0.05)", borderColor: "rgba(232,184,75,0.18)", color: "#8a8070" }}
+          >
+            <Clock size={12} style={{ color: "#e8b84b" }} />
+            <span>Awaiting tutor response</span>
+          </div>
+        )}
 
         {/* Live join */}
         {jn && (
@@ -1246,47 +1357,29 @@ function StudentView({ sessions, userId, onRate }) {
   const pending = outgoing.filter((s) => s.status === "pending");
   const completed = outgoing.filter((s) => s.status === "completed");
   const declined = outgoing.filter((s) => s.status === "rejected");
-
-  // "live" = accepted sessions whose time is within the join window
   const live = outgoing.filter((s) => canJoinSession(s));
 
+  const upcomingTotal = upcoming.length + pending.length + live.length;
+
   const TABS = [
-    { id: "upcoming", label: "Upcoming", count: upcoming.length, icon: Calendar },
-    { id: "outgoing", label: "Outgoing", count: pending.length + live.length, icon: ArrowRight },
+    { id: "upcoming", label: "Upcoming", count: upcomingTotal, icon: Calendar },
     { id: "done", label: "Done", count: 0, icon: CheckCircle2 },
   ];
 
   const renderContent = () => {
     if (tab === "upcoming") {
-      return upcoming.length === 0 ? (
-        <EmptyState
-          icon={Calendar}
-          title="No upcoming sessions"
-          subtitle="Accepted sessions will appear here"
-          cta="Find a Tutor"
-          onCta={() => router.push("/explore")}
-        />
-      ) : (
-        <>
-          <SectionLabel>Confirmed · {upcoming.length}</SectionLabel>
-          {upcoming.map((s, i) => (
-            <StudentSessionCard key={s.id} session={s} userId={userId} onRate={onRate} index={i} />
-          ))}
-        </>
-      );
-    }
-
-    if (tab === "outgoing") {
-      const all = [...live, ...pending];
-      return all.length === 0 ? (
-        <EmptyState
-          icon={Clock}
-          title="No active requests"
-          subtitle="Live sessions and pending requests appear here"
-          cta="Browse Tutors"
-          onCta={() => router.push("/explore")}
-        />
-      ) : (
+      if (upcomingTotal === 0) {
+        return (
+          <EmptyState
+            icon={Calendar}
+            title="No upcoming sessions"
+            subtitle="Request a course from Explore — pending requests will show here too"
+            cta="Find a Tutor"
+            onCta={() => router.push("/explore")}
+          />
+        );
+      }
+      return (
         <>
           {live.length > 0 && (
             <>
@@ -1296,11 +1389,19 @@ function StudentView({ sessions, userId, onRate }) {
               ))}
             </>
           )}
+          {upcoming.length > 0 && (
+            <>
+              <SectionLabel>Confirmed · {upcoming.length}</SectionLabel>
+              {upcoming.map((s, i) => (
+                <StudentSessionCard key={s.id} session={s} userId={userId} onRate={onRate} index={i + live.length} />
+              ))}
+            </>
+          )}
           {pending.length > 0 && (
             <>
-              <SectionLabel>Waiting for tutor · {pending.length}</SectionLabel>
+              <SectionLabel>Pending requests · {pending.length}</SectionLabel>
               {pending.map((s, i) => (
-                <StudentSessionCard key={s.id} session={s} userId={userId} onRate={onRate} index={i + live.length} />
+                <StudentSessionCard key={s.id} session={s} userId={userId} onRate={onRate} index={i + live.length + upcoming.length} />
               ))}
             </>
           )}
@@ -1354,7 +1455,7 @@ function StudentView({ sessions, userId, onRate }) {
 
 // ────────────────────────────────────────────����─────────────────��──────────────
 // Tutor Courses List (inside Sessions page)
-// ─────────────────────────────────────────────────────────────────────────────
+// ──��──────────────────────────────────────────────────────────────────────────
 
 function TutorCoursesList({ courses, onAddCourse }) {
   return (
