@@ -44,6 +44,7 @@ import {
   Mic,
   MicOff,
   VideoOff,
+  Brain,
 } from "lucide-react";
 import { grantChatAccess } from "@/lib/utils";
 
@@ -792,7 +793,7 @@ function AcceptModal({ session, onClose, onConfirm }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Update Meeting URL Modal
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────��────────────────────────────────────
 
 function UpdateMeetingModal({ session, onClose, onSave }) {
   const [meetingLink, setMeetingLink] = useState(session.meeting_link || "");
@@ -1138,7 +1139,7 @@ function AddCourseModal({ onClose, onSave }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tab Bar
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────���───────────────────────
 
 function TabBar({ tabs, active, onChange }) {
   return (
@@ -1814,7 +1815,7 @@ function StudentView({ sessions, userId, onRate }) {
 // Tutor Courses List (inside Sessions page)
 // ──��──────────────────────────────────────────────────────────────────────────
 
-function TutorCoursesList({ courses, onAddCourse }) {
+function TutorCoursesList({ courses, onAddCourse, hasAssessment, onGoAssess }) {
   return (
     <div
       className="rounded-2xl border overflow-hidden"
@@ -1836,20 +1837,45 @@ function TutorCoursesList({ courses, onAddCourse }) {
         </div>
         <motion.button
           whileTap={{ scale: 0.97 }}
-          onClick={onAddCourse}
+          onClick={hasAssessment ? onAddCourse : onGoAssess}
           className="flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium"
-          style={{ background: "rgba(232,184,75,0.08)", borderColor: "rgba(232,184,75,0.2)", color: "#e8b84b" }}
+          style={{
+            background: hasAssessment ? "rgba(232,184,75,0.08)" : "rgba(176,82,82,0.08)",
+            borderColor: hasAssessment ? "rgba(232,184,75,0.2)" : "rgba(176,82,82,0.2)",
+            color: hasAssessment ? "#e8b84b" : "#b05252",
+          }}
         >
-          <Plus size={11} /> Add Course
+          {hasAssessment ? <><Plus size={11} /> Add Course</> : <><Brain size={11} /> Take Assessment First</>}
         </motion.button>
       </div>
+
+      {/* Assessment required notice */}
+      {!hasAssessment && (
+        <div className="px-4 py-3 flex items-start gap-2.5" style={{ borderBottom: "1px solid #1a1814", background: "rgba(176,82,82,0.04)" }}>
+          <AlertCircle size={13} style={{ color: "#b05252", flexShrink: 0, marginTop: 1 }} />
+          <div>
+            <p className="text-xs font-medium" style={{ color: "#b05252" }}>Assessment required</p>
+            <p className="text-[11px] mt-0.5 leading-relaxed" style={{ color: "#6a6050" }}>
+              Complete an AI skill assessment first to verify your expertise before creating courses.
+            </p>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={onGoAssess}
+              className="mt-2 flex items-center gap-1 text-[11px] font-medium"
+              style={{ color: "#e8b84b" }}
+            >
+              Go to Assessment <ChevronRight size={10} />
+            </motion.button>
+          </div>
+        </div>
+      )}
 
       {courses.length === 0 ? (
         <div className="py-10 flex flex-col items-center text-center px-4">
           <BookOpen size={20} style={{ color: "#3a3428" }} className="mb-2" />
           <p className="text-sm font-medium" style={{ color: "#6a6050" }}>No courses yet</p>
           <p className="text-xs mt-1" style={{ color: "#3a3428" }}>
-            Add a course to start receiving student requests
+            {hasAssessment ? "Add a course to start receiving student requests" : "Complete your assessment to unlock course creation"}
           </p>
         </div>
       ) : (
@@ -1890,9 +1916,9 @@ function TutorCoursesList({ courses, onAddCourse }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tutor View
-// ─────────────────────────────────────────────────────────────────────────────
+// ──────────────────────────��──────────────────────────────────────────────────
 
-function TutorView({ sessions, courses, userId, userName, onAccept, onDecline, onRate, onAddCourse, onUpdateMeeting, onEndSession }) {
+function TutorView({ sessions, courses, userId, userName, onAccept, onDecline, onRate, onAddCourse, onUpdateMeeting, onEndSession, hasAssessment, onGoAssess }) {
   const [tab, setTab] = useState("incoming");
 
   const incoming = sessions.filter((s) => s.tutor_id === userId && s.status === "pending");
@@ -2022,7 +2048,7 @@ function TutorView({ sessions, courses, userId, userName, onAccept, onDecline, o
   return (
     <div className="space-y-3">
       {/* Courses list always visible at top for tutors */}
-      <TutorCoursesList courses={courses} onAddCourse={onAddCourse} />
+              <TutorCoursesList courses={courses} onAddCourse={onAddCourse} hasAssessment={hasAssessment} onGoAssess={onGoAssess} />
 
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
       <AnimatePresence mode="wait">
@@ -2059,6 +2085,7 @@ export default function SessionsPage() {
   const [acceptModal, setAcceptModal] = useState(null);
   const [showAddCourse, setShowAddCourse] = useState(false);
   const [updateMeetingModal, setUpdateMeetingModal] = useState(null);
+  const [hasAssessment, setHasAssessment] = useState(false);
 
   const fetchSessions = useCallback(async (uid, silent = false) => {
     if (!silent) setLoading(true);
@@ -2094,6 +2121,15 @@ export default function SessionsPage() {
       if (!authUser) { router.push("/login"); return; }
       setUser(authUser);
       await Promise.all([fetchSessions(authUser.id), fetchCourses(authUser.id)]);
+
+      // Check if tutor has a passing assessment
+      const { data: assessmentData } = await supabase
+        .from("assessments")
+        .select("score")
+        .eq("user_id", authUser.id)
+        .gte("score", 50)
+        .limit(1);
+      setHasAssessment((assessmentData || []).length > 0);
 
       const channel = supabase
         .channel("sessions-realtime")
@@ -2343,6 +2379,8 @@ export default function SessionsPage() {
                   onAddCourse={() => setShowAddCourse(true)}
                   onUpdateMeeting={(s) => setUpdateMeetingModal(s)}
                   onEndSession={handleEndSession}
+                  hasAssessment={hasAssessment}
+                  onGoAssess={() => router.push("/assessment")}
                 />
               )}
             </motion.div>
