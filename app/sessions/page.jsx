@@ -265,12 +265,13 @@ function NotesPanel({ session, isTutor }) {
           .insert({
             session_id: session.id,
             course_id: session.course_id || null,
-            tutor_id: session.provider_id,
-            student_id: session.requester_id,
-            name: file.name,
-            url: urlData.publicUrl,
-            size: file.size,
-            type: file.type,
+            tutor_id: session.tutor_id,
+            student_id: session.student_id,
+            file_name: file.name,
+            file_url: urlData.publicUrl,
+            file_size: file.size,
+            resource_type: file.type,
+            title: file.name,
           })
           .select()
           .single();
@@ -346,15 +347,15 @@ function NotesPanel({ session, isTutor }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium truncate" style={{ color: "#f5f0e8" }}>
-                  {r.name}
+                  {r.title || r.file_name}
                 </p>
-                {r.size && (
+                {r.file_size && (
                   <p className="text-[10px]" style={{ color: "#4a4438" }}>
-                    {Math.round(r.size / 1024)} KB · Uploaded by tutor
+                    {Math.round(r.file_size / 1024)} KB · Uploaded by tutor
                   </p>
                 )}
               </div>
-              <a href={r.url} target="_blank" rel="noreferrer">
+              <a href={r.file_url} target="_blank" rel="noreferrer">
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium"
@@ -417,29 +418,29 @@ function RateModal({ session, raterId, onClose, onDone }) {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
-  const ratedId =
-    raterId === session.requester_id
-      ? session.provider_id
-      : session.requester_id;
+  const revieweeId =
+    raterId === session.student_id
+      ? session.tutor_id
+      : session.student_id;
 
   const handleSubmit = async () => {
     if (score === 0) return;
     setSubmitting(true);
     // Check if already rated
     const { data: existing } = await supabase
-      .from("ratings")
+      .from("reviews")
       .select("id")
       .eq("session_id", session.id)
-      .eq("rater_id", raterId)
+      .eq("reviewer_id", raterId)
       .maybeSingle();
 
     if (!existing) {
-      await supabase.from("ratings").insert({
+      await supabase.from("reviews").insert({
         session_id: session.id,
-        rater_id: raterId,
-        rated_id: ratedId,
+        reviewer_id: raterId,
+        reviewee_id: revieweeId,
         score,
-        feedback,
+        comment: feedback,
       });
     }
     setDone(true);
@@ -888,9 +889,9 @@ function fmtTime(dt) {
 function canJoinSession(s) {
   return (
     s.status === "accepted" &&
-    s.scheduled_time &&
+    s.scheduled_at &&
     s.meeting_link &&
-    Math.abs(new Date(s.scheduled_time) - Date.now()) <= 15 * 60 * 1000
+    Math.abs(new Date(s.scheduled_at) - Date.now()) <= 15 * 60 * 1000
   );
 }
 
@@ -899,11 +900,11 @@ function canJoinSession(s) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function StudentSessionCard({ session: s, userId, onRate, index }) {
-  const other = s.requester_id === userId ? s.provider : s.requester;
+  const other = s.student_id === userId ? s.tutor : s.student;
   const isUpcoming = s.status === "accepted";
   const isCompleted = s.status === "completed";
   const jn = canJoinSession(s);
-  const timeStr = fmtTime(s.scheduled_time);
+  const timeStr = fmtTime(s.scheduled_at);
   const courseTitle = s.course?.title || s.skill?.skill_name || "Session";
 
   return (
@@ -995,7 +996,7 @@ function StudentSessionCard({ session: s, userId, onRate, index }) {
         )}
 
         {/* Rate */}
-        {isCompleted && s.requester_id === userId && (
+        {isCompleted && s.student_id === userId && (
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={() => onRate(s)}
@@ -1034,7 +1035,7 @@ function TutorIncomingCard({ session: s, onAccept, onDecline, index }) {
     setLoading(null);
   };
 
-  const timeStr = fmtTime(s.scheduled_time);
+  const timeStr = fmtTime(s.scheduled_at);
   const courseTitle = s.course?.title || s.skill?.skill_name || "a skill";
 
   return (
@@ -1051,12 +1052,12 @@ function TutorIncomingCard({ session: s, onAccept, onDecline, index }) {
       <div style={{ height: 2, background: "rgba(232,184,75,0.4)" }} />
       <div className="p-4">
         <div className="flex items-start gap-3 mb-4">
-          <Avatar name={s.requester?.name} url={s.requester?.avatar_url} size={10} />
+          <Avatar name={s.student?.name} url={s.student?.avatar_url} size={10} />
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-sm font-semibold" style={{ color: "#f5f0e8" }}>
-                  {s.requester?.name || "Student"}
+                  {s.student?.name || "Student"}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: "#8a8070" }}>
                   Wants to learn:{" "}
@@ -1078,12 +1079,12 @@ function TutorIncomingCard({ session: s, onAccept, onDecline, index }) {
               </p>
             )}
 
-            {s.requester_message && (
+            {s.tutor_message && (
               <p
                 className="mt-2 rounded-lg border-l-2 pl-2.5 text-xs italic leading-relaxed"
                 style={{ color: "#6a6050", borderColor: "#3a342c" }}
               >
-                {`"${s.requester_message}"`}
+                {`"${s.tutor_message}"`}
               </p>
             )}
           </div>
@@ -1131,7 +1132,7 @@ function TutorSessionCard({ session: s, userId, onRate, index }) {
   const isUpcoming = s.status === "accepted";
   const isCompleted = s.status === "completed";
   const jn = canJoinSession(s);
-  const timeStr = fmtTime(s.scheduled_time);
+  const timeStr = fmtTime(s.scheduled_at);
   const courseTitle = s.course?.title || s.skill?.skill_name || "Session";
 
   return (
@@ -1148,7 +1149,7 @@ function TutorSessionCard({ session: s, userId, onRate, index }) {
 
       <div className="p-4">
         <div className="flex items-start gap-3">
-          <Avatar name={s.requester?.name} url={s.requester?.avatar_url} size={10} />
+          <Avatar name={s.student?.name} url={s.student?.avatar_url} size={10} />
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -1156,7 +1157,7 @@ function TutorSessionCard({ session: s, userId, onRate, index }) {
                   {courseTitle}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: "#8a8070" }}>
-                  with {s.requester?.name || "Student"}
+                  with {s.student?.name || "Student"}
                 </p>
               </div>
               <StatusBadge status={s.status} />
@@ -1228,7 +1229,7 @@ function TutorSessionCard({ session: s, userId, onRate, index }) {
               </motion.button>
             </div>
             {/* Resources Panel */}
-            <NotesPanel session={s} isTutor={s.provider_id === userId} />
+            <NotesPanel session={s} isTutor={s.tutor_id === userId} />
             <p className="mt-1.5 text-center text-[10px]" style={{ color: "#3a3428" }}>
               Student downloads resources as read-only
             </p>
@@ -1247,7 +1248,7 @@ function StudentView({ sessions, userId, onRate }) {
   const router = useRouter();
   const [tab, setTab] = useState("upcoming");
 
-  const outgoing = sessions.filter((s) => s.requester_id === userId);
+  const outgoing = sessions.filter((s) => s.student_id === userId);
   const upcoming = outgoing.filter((s) => s.status === "accepted");
   const pending = outgoing.filter((s) => s.status === "pending");
   const completed = outgoing.filter((s) => s.status === "completed");
@@ -1358,7 +1359,7 @@ function StudentView({ sessions, userId, onRate }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────��──────────────
 // Tutor Courses List (inside Sessions page)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1443,10 +1444,10 @@ function TutorCoursesList({ courses, onAddCourse }) {
 function TutorView({ sessions, courses, userId, onAccept, onDecline, onRate, onAddCourse }) {
   const [tab, setTab] = useState("incoming");
 
-  const incoming = sessions.filter((s) => s.provider_id === userId && s.status === "pending");
-  const upcoming = sessions.filter((s) => s.provider_id === userId && s.status === "accepted");
-  const completed = sessions.filter((s) => s.provider_id === userId && s.status === "completed");
-  const declined = sessions.filter((s) => s.provider_id === userId && s.status === "rejected");
+  const incoming = sessions.filter((s) => s.tutor_id === userId && s.status === "pending");
+  const upcoming = sessions.filter((s) => s.tutor_id === userId && s.status === "accepted");
+  const completed = sessions.filter((s) => s.tutor_id === userId && s.status === "completed");
+  const declined = sessions.filter((s) => s.tutor_id === userId && s.status === "rejected");
 
   const TABS = [
     { id: "incoming", label: "Incoming", count: incoming.length, icon: Inbox },
@@ -1562,8 +1563,8 @@ export default function SessionsPage() {
 
     const { data } = await supabase
       .from("sessions")
-      .select(`*, requester:requester_id(name,avatar_url), provider:provider_id(name,avatar_url), skill:skill_id(skill_name,name), course:course_id(title,skill_name,level)`)
-      .or(`requester_id.eq.${uid},provider_id.eq.${uid}`)
+      .select(`*, student:student_id(name,avatar_url), tutor:tutor_id(name,avatar_url), skill:skill_id(skill_name,name), course:course_id(title,skill_name,level)`)
+      .or(`student_id.eq.${uid},tutor_id.eq.${uid}`)
       .order("created_at", { ascending: false });
 
     setSessions(data || []);
@@ -1590,8 +1591,8 @@ export default function SessionsPage() {
 
       const channel = supabase
         .channel("sessions-realtime")
-        .on("postgres_changes", { event: "*", schema: "public", table: "sessions", filter: `requester_id=eq.${authUser.id}` }, () => fetchSessions(authUser.id, true))
-        .on("postgres_changes", { event: "*", schema: "public", table: "sessions", filter: `provider_id=eq.${authUser.id}` }, () => fetchSessions(authUser.id, true))
+        .on("postgres_changes", { event: "*", schema: "public", table: "sessions", filter: `student_id=eq.${authUser.id}` }, () => fetchSessions(authUser.id, true))
+        .on("postgres_changes", { event: "*", schema: "public", table: "sessions", filter: `tutor_id=eq.${authUser.id}` }, () => fetchSessions(authUser.id, true))
         .subscribe();
 
       return () => supabase.removeChannel(channel);
@@ -1606,7 +1607,7 @@ export default function SessionsPage() {
 
   const handleAcceptConfirm = async (sessionId, { scheduledTime, meetingLink, message }) => {
     const update = { status: "accepted" };
-    if (scheduledTime) update.scheduled_time = new Date(scheduledTime).toISOString();
+    if (scheduledTime) update.scheduled_at = new Date(scheduledTime).toISOString();
     if (meetingLink) update.meeting_link = meetingLink;
     if (message) update.tutor_message = message;
 
@@ -1649,7 +1650,7 @@ export default function SessionsPage() {
 
   const uid = user?.id;
   const relevantSessions = sessions.filter((s) =>
-    role === "tutor" ? s.provider_id === uid : s.requester_id === uid,
+    role === "tutor" ? s.tutor_id === uid : s.student_id === uid,
   );
   const totalSessions = relevantSessions.length;
   const completedCount = relevantSessions.filter((s) => s.status === "completed").length;
@@ -1657,8 +1658,8 @@ export default function SessionsPage() {
   const upcomingCount = relevantSessions.filter((s) => s.status === "accepted").length;
 
   const nextSession = sessions
-    .filter((s) => s.status === "accepted" && s.scheduled_time && new Date(s.scheduled_time) > new Date())
-    .sort((a, b) => new Date(a.scheduled_time) - new Date(b.scheduled_time))[0];
+    .filter((s) => s.status === "accepted" && s.scheduled_at && new Date(s.scheduled_at) > new Date())
+    .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))[0];
 
   if (loading) {
     return (
@@ -1723,7 +1724,7 @@ export default function SessionsPage() {
         {/* Next session banner */}
         <AnimatePresence>
           {nextSession && (() => {
-            const other = nextSession.requester_id === uid ? nextSession.provider : nextSession.requester;
+            const other = nextSession.student_id === uid ? nextSession.tutor : nextSession.student;
             const jn = canJoinSession(nextSession);
             return (
               <motion.div
@@ -1748,7 +1749,7 @@ export default function SessionsPage() {
                       {nextSession.course?.title || nextSession.skill?.skill_name || "Session"} · {other?.name}
                     </p>
                     <p className="text-[11px] mt-0.5" style={{ color: "#1d9e75" }}>
-                      {fmtTime(nextSession.scheduled_time)}
+                      {fmtTime(nextSession.scheduled_at)}
                     </p>
                   </div>
                 </div>

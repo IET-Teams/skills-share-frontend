@@ -703,19 +703,19 @@ function RatingsSection({ ratings, avgRating }) {
               {safeRatings.map((r, i) => (
                 <motion.div key={r.id || i} variants={fadeUp} initial="hidden" animate="visible" custom={i} className="rounded-xl border p-3.5" style={{ background: "#141210", borderColor: "#2a2520" }}>
                   <div className="flex items-start gap-3">
-                    <Avatar name={r.rater?.name} url={r.rater?.avatar_url} size={8} />
+                    <Avatar name={r.reviewer?.name} url={r.reviewer?.avatar_url} size={8} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <div>
-                          <p className="text-xs font-medium" style={{ color: "#f5f0e8" }}>{r.rater?.name || "Anonymous"}</p>
+                          <p className="text-xs font-medium" style={{ color: "#f5f0e8" }}>{r.reviewer?.name || "Anonymous"}</p>
                           <p className="text-[10px]" style={{ color: "#4a4438" }}>
                             {r.created_at ? new Date(r.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : ""}
                           </p>
                         </div>
                         <StarRow score={r.score} size={10} />
                       </div>
-                      {r.feedback && (
-                        <p className="text-xs leading-relaxed" style={{ color: "#8a8070" }}>{r.feedback}</p>
+                      {r.comment && (
+                        <p className="text-xs leading-relaxed" style={{ color: "#8a8070" }}>{r.comment}</p>
                       )}
                     </div>
                   </div>
@@ -824,10 +824,10 @@ function RequestFromProfileModal({ course, tutorId, tutorName, currentUserId, su
     setSubmitting(true); setErr("");
 
     const payload = {
-      requester_id: currentUserId,
-      provider_id: tutorId,
+      student_id: currentUserId,
+      tutor_id: tutorId,
       status: "pending",
-      requester_message: message.trim() || null,
+      tutor_message: message.trim() || null,
       preferred_time: new Date(preferredTime).toISOString(),
     };
 
@@ -963,11 +963,11 @@ export default function ProfilePage() {
         supabase.from("user_skills").select("*, skill:skill_id(*)").eq("user_id", uid),
         supabase.from("courses").select("*").eq("tutor_id", uid).order("created_at", { ascending: false }),
         supabase.from("sessions")
-          .select("*, requester:requester_id(name,avatar_url), provider:provider_id(name,avatar_url), skill:skill_id(skill_name,name)")
-          .or(`requester_id.eq.${uid},provider_id.eq.${uid}`)
+          .select("*, student:student_id(name,avatar_url), tutor:tutor_id(name,avatar_url), skill:skill_id(skill_name,name)")
+          .or(`student_id.eq.${uid},tutor_id.eq.${uid}`)
           .order("created_at", { ascending: false })
           .limit(30),
-        supabase.from("ratings").select("*, rater:rater_id(name,avatar_url)").eq("rated_id", uid).order("created_at", { ascending: false }),
+        supabase.from("reviews").select("*, reviewer:reviewer_id(name,avatar_url)").eq("reviewee_id", uid).order("created_at", { ascending: false }),
         supabase.from("assessments").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
       ]);
 

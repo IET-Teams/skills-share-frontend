@@ -193,10 +193,10 @@ function RequestCourseModal({ tutor, course, currentUserId, supabase, onClose, o
     setErr("");
 
     const payload = {
-      requester_id: currentUserId,
-      provider_id: tutor.id,
+      student_id: currentUserId,
+      tutor_id: tutor.id,
       status: "pending",
-      requester_message: message.trim() || null,
+      tutor_message: message.trim() || null,
       preferred_time: new Date(preferredTime).toISOString(),
     };
 
@@ -560,19 +560,19 @@ export default function ExplorePage() {
     const tutorIds = baseTutors.map((t) => t.id);
 
     const [{ data: ratingsData }, { data: sessionsData }] = await Promise.all([
-      supabase.from("ratings").select("id, rated_id, score, feedback, created_at, rater:rater_id(name,avatar_url)").in("rated_id", tutorIds).order("created_at", { ascending: false }),
-      supabase.from("sessions").select("id, provider_id").in("provider_id", tutorIds).eq("status", "completed"),
+      supabase.from("reviews").select("id, reviewee_id, score, comment, created_at, reviewer:reviewer_id(name,avatar_url)").in("reviewee_id", tutorIds).order("created_at", { ascending: false }),
+      supabase.from("sessions").select("id, tutor_id").in("tutor_id", tutorIds).eq("status", "completed"),
     ]);
 
     const ratingsByTutor = new Map();
     (ratingsData || []).forEach((r) => {
-      if (!ratingsByTutor.has(r.rated_id)) ratingsByTutor.set(r.rated_id, []);
-      ratingsByTutor.get(r.rated_id).push(r);
+      if (!ratingsByTutor.has(r.reviewee_id)) ratingsByTutor.set(r.reviewee_id, []);
+      ratingsByTutor.get(r.reviewee_id).push(r);
     });
 
     const sessionsByTutor = new Map();
     (sessionsData || []).forEach((s) => {
-      sessionsByTutor.set(s.provider_id, (sessionsByTutor.get(s.provider_id) || 0) + 1);
+      sessionsByTutor.set(s.tutor_id, (sessionsByTutor.get(s.tutor_id) || 0) + 1);
     });
 
     const learnSet = new Set(learnNames.map((s) => s.toLowerCase()));
@@ -584,8 +584,8 @@ export default function ExplorePage() {
         const avgRating = reviewCount > 0 ? ratings.reduce((acc, r) => acc + Number(r.score || 0), 0) / reviewCount : 0;
         const sessionsTaught = sessionsByTutor.get(tutor.id) || 0;
         const reviews = ratings.slice(0, 12).map((r) => ({
-          id: r.id, score: r.score, feedback: r.feedback,
-          raterName: r.rater?.name, raterAvatar: r.rater?.avatar_url, createdAt: r.created_at,
+          id: r.id, score: r.score, feedback: r.comment,
+          raterName: r.reviewer?.name, raterAvatar: r.reviewer?.avatar_url, createdAt: r.created_at,
         }));
         const matchCount = tutor.teachSkills.filter((skill) => learnSet.has(skill.toLowerCase())).length;
         const leaderboardScore = avgRating * sessionsTaught;
