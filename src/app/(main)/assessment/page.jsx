@@ -692,87 +692,36 @@ function SkillSetupStep({ userId, supabase, existingSkills, onStart, isTutor, ha
 // Main page
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AssessmentPage() {
-  const supabase     = createSupabaseClient();
-  const { role }     = useRole();
+  const supabase = createSupabaseClient();
+  const { role } = useRole();
   const searchParams = useSearchParams();
-  const router       = useRouter();
+  const router = useRouter();
 
-  const skillParam  = searchParams.get("skill");
+  const skillParam = searchParams.get("skill");
 
   // ── State machine: setup → generating → quiz → evaluating → report ──
-  const [stage, setStage]       = useState("setup");
+  const [stage, setStage] = useState("setup");
   const [currentUser, setCurrentUser] = useState(null);
   const [studentName, setStudentName] = useState("Student");
-  const [skills,      setSkills]      = useState([]);     // [{id, name, level, assessed}]
+  const [skills, setSkills] = useState([]); // [{id, name, level, assessed}]
   const [hasPassedAssessment, setHasPassedAssessment] = useState(false);
 
-  const [skillName,   setSkillName]   = useState(skillParam || "");
-  const [skillId,     setSkillId]     = useState(null);
-  const [level,       setLevel]       = useState("intermediate");
+  const [skillName, setSkillName] = useState(skillParam || "");
+  const [skillId, setSkillId] = useState(null);
+  const [level, setLevel] = useState("intermediate");
 
-  const [questions,   setQuestions]   = useState([]);
-  const [answers,     setAnswers]     = useState([]);
-  const [current,     setCurrent]     = useState(0);
-  const [dir,         setDir]         = useState(1);
-  const [timeLeft,    setTimeLeft]    = useState(0);
-  const [startTime,   setStartTime]   = useState(null);
-  const [timeTaken,   setTimeTaken]   = useState(0);
+  const [questions, setQuestions] = useState([]);
+  const [answers, setAnswers] = useState([]);
+  const [current, setCurrent] = useState(0);
+  const [dir, setDir] = useState(1);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [startTime, setStartTime] = useState(null);
+  const [timeTaken, setTimeTaken] = useState(0);
 
-  const [report,      setReport]      = useState(null);
-  const [error,       setError]       = useState("");
+  const [report, setReport] = useState(null);
+  const [error, setError] = useState("");
 
   const timerRef = useRef(null);
-
-  // ── Auth + data fetch ──────────────────────────────────────────────────────
-  useEffect(() => {
-    async function init() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push("/login"); return; }
-      setCurrentUser(user);
-
-      const { data: profileData } = await supabase.from("profiles").select("name").eq("id", user.id).single();
-      setStudentName(profileData?.name || user.email?.split("@")[0] || "Student");
-
-      // Fetch user skills
-      const { data: userSkillsData } = await supabase
-        .from("user_skills")
-        .select("*, skill:skill_id(*)")
-        .eq("user_id", user.id);
-
-      // Fetch existing assessments to mark which skills are assessed
-      const { data: assessmentData } = await supabase
-        .from("assessments")
-        .select("skill_name, score")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      const assessedSkillNames = new Set((assessmentData || []).map((a) => a.skill_name?.toLowerCase()));
-      const hasPassed = (assessmentData || []).some((a) => a.score >= 50);
-      setHasPassedAssessment(hasPassed);
-
-      const fetchedSkills = (userSkillsData || [])
-        .map((us) => ({
-          id: us.skill_id,
-          name: us.skill?.name || us.skill?.skill_name,
-          level: us.proficiency_level || "Intermediate",
-          assessed: assessedSkillNames.has((us.skill?.name || "").toLowerCase()),
-        }))
-        .filter((s) => s.name);
-
-      setSkills(fetchedSkills);
-
-      // Auto-start from ?skill= param
-      if (skillParam) {
-        const match = fetchedSkills.find((s) => s.name?.toLowerCase() === skillParam.toLowerCase());
-        if (match) {
-          kickoffGeneration(match.name, match.id, "intermediate");
-        } else {
-          kickoffGeneration(skillParam, null, "intermediate");
-        }
-      }
-    }
-    init();
-  }, []);
 
   // ── Question generation ────────────────────────────────────────────────────
   const kickoffGeneration = async (skill, sId, lvl) => {
@@ -806,35 +755,11 @@ export default function AssessmentPage() {
       setStage("quiz");
     } catch (e) {
       console.error("kickoffGeneration failed:", e);
-      setError(e.message || "Failed to generate questions. Check your API key.");
+      setError(
+        e.message || "Failed to generate questions. Check your API key.",
+      );
       setStage("setup");
     }
-  };
-
-  // ── Timer ─────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (stage !== "quiz") return;
-    timerRef.current = setInterval(() => {
-      setTimeLeft((t) => {
-        if (t <= 1) { clearInterval(timerRef.current); handleSubmit(); return 0; }
-        return t - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timerRef.current);
-  }, [stage]);
-
-  // ── Navigation ────────────────────────────────────────────────────────────
-  const goTo = (next) => {
-    setDir(next > current ? 1 : -1);
-    setCurrent(next);
-  };
-
-  const selectAnswer = (optionIndex) => {
-    setAnswers((prev) => {
-      const next = [...prev];
-      next[current] = optionIndex;
-      return next;
-    });
   };
 
   // ── Submit quiz ───────────────────────────────────────────────────────────
@@ -871,17 +796,23 @@ export default function AssessmentPage() {
 
         // Update proficiency_level in user_skills if score is high enough
         if (skillId) {
-          const newLevel = r.score >= 80 ? "Advanced" : r.score >= 55 ? "Intermediate" : "Beginner";
-          await supabase.from("user_skills")
+          const newLevel =
+            r.score >= 80
+              ? "Advanced"
+              : r.score >= 55
+                ? "Intermediate"
+                : "Beginner";
+          await supabase
+            .from("user_skills")
             .update({ proficiency_level: newLevel })
             .eq("user_id", currentUser.id)
             .eq("skill_id", skillId);
         }
 
         // Mark skill as assessed in local state
-        setSkills((prev) => prev.map((s) =>
-          s.id === skillId ? { ...s, assessed: true } : s
-        ));
+        setSkills((prev) =>
+          prev.map((s) => (s.id === skillId ? { ...s, assessed: true } : s)),
+        );
 
         if (r.score >= 50) setHasPassedAssessment(true);
       }
@@ -892,6 +823,104 @@ export default function AssessmentPage() {
       setError("Failed to generate report. Please try again.");
       setStage("quiz");
     }
+  };
+
+  // ── Auth + data fetch ──────────────────────────────────────────────────────
+  useEffect(() => {
+    async function init() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+      setCurrentUser(user);
+
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("name")
+        .eq("id", user.id)
+        .single();
+      setStudentName(
+        profileData?.name || user.email?.split("@")[0] || "Student",
+      );
+
+      // Fetch user skills
+      const { data: userSkillsData } = await supabase
+        .from("user_skills")
+        .select("*, skill:skill_id(*)")
+        .eq("user_id", user.id);
+
+      // Fetch existing assessments to mark which skills are assessed
+      const { data: assessmentData } = await supabase
+        .from("assessments")
+        .select("skill_name, score")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      const assessedSkillNames = new Set(
+        (assessmentData || []).map((a) => a.skill_name?.toLowerCase()),
+      );
+      const hasPassed = (assessmentData || []).some((a) => a.score >= 50);
+      setHasPassedAssessment(hasPassed);
+
+      const fetchedSkills = (userSkillsData || [])
+        .map((us) => ({
+          id: us.skill_id,
+          name: us.skill?.name || us.skill?.skill_name,
+          level: us.proficiency_level || "Intermediate",
+          assessed: assessedSkillNames.has(
+            (us.skill?.name || "").toLowerCase(),
+          ),
+        }))
+        .filter((s) => s.name);
+
+      setSkills(fetchedSkills);
+
+      // Auto-start from ?skill= param
+      if (skillParam) {
+        const match = fetchedSkills.find(
+          (s) => s.name?.toLowerCase() === skillParam.toLowerCase(),
+        );
+        if (match) {
+          kickoffGeneration(match.name, match.id, "intermediate");
+        } else {
+          kickoffGeneration(skillParam, null, "intermediate");
+        }
+      }
+    }
+    init();
+  }, []);
+
+  // ── Timer ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (stage !== "quiz") return;
+    timerRef.current = setInterval(() => {
+      setTimeLeft((t) => {
+        if (t <= 1) {
+          clearInterval(timerRef.current);
+          handleSubmit();
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timerRef.current);
+  }, [stage]);
+
+  // ── Navigation ────────────────────────────────────────────────────────────
+  const goTo = (next) => {
+    setDir(next > current ? 1 : -1);
+    setCurrent(next);
+  };
+
+  const selectAnswer = (optionIndex) => {
+    setAnswers((prev) => {
+      const next = [...prev];
+      next[current] = optionIndex;
+      return next;
+    });
   };
 
   // ── Retake ────────────────────────────────────────────────────────────────
@@ -936,17 +965,42 @@ export default function AssessmentPage() {
 
   if (stage === "evaluating") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-4" style={{ background: "#0e0c0a" }}>
-        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center">
+      <div
+        className="flex min-h-screen flex-col items-center justify-center px-4"
+        style={{ background: "#0e0c0a" }}
+      >
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="text-center"
+        >
           <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center">
-            <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-0 rounded-full" style={{ border: "2px solid transparent", borderTopColor: "#1d9e75", borderRightColor: "rgba(29,158,117,0.3)" }} />
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: "rgba(29,158,117,0.1)", border: "1px solid rgba(29,158,117,0.2)" }}>
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 rounded-full"
+              style={{
+                border: "2px solid transparent",
+                borderTopColor: "#1d9e75",
+                borderRightColor: "rgba(29,158,117,0.3)",
+              }}
+            />
+            <div
+              className="flex h-14 w-14 items-center justify-center rounded-2xl"
+              style={{
+                background: "rgba(29,158,117,0.1)",
+                border: "1px solid rgba(29,158,117,0.2)",
+              }}
+            >
               <BarChart3 size={22} style={{ color: "#1d9e75" }} />
             </div>
           </div>
-          <h2 className="text-lg font-medium" style={{ color: "#f5f0e8" }}>Generating your report</h2>
-          <p className="mt-1 text-sm" style={{ color: "#6a6050" }}>Analysing your {questions.length} answers…</p>
+          <h2 className="text-lg font-medium" style={{ color: "#f5f0e8" }}>
+            Generating your report
+          </h2>
+          <p className="mt-1 text-sm" style={{ color: "#6a6050" }}>
+            Analysing your {questions.length} answers…
+          </p>
         </motion.div>
       </div>
     );
@@ -973,49 +1027,101 @@ export default function AssessmentPage() {
 
   return (
     <div className="min-h-screen" style={{ background: "#0e0c0a" }}>
-      <ProgressBar current={current} total={questions.length} timeLeft={timeLeft} />
+      <ProgressBar
+        current={current}
+        total={questions.length}
+        timeLeft={timeLeft}
+      />
 
       {error && (
         <div className="mx-auto max-w-2xl px-4 pt-4">
-          <div className="rounded-xl p-3 text-sm" style={{ background: "rgba(176,82,82,0.1)", color: "#b05252", border: "1px solid rgba(176,82,82,0.2)" }}>
+          <div
+            className="rounded-xl p-3 text-sm"
+            style={{
+              background: "rgba(176,82,82,0.1)",
+              color: "#b05252",
+              border: "1px solid rgba(176,82,82,0.2)",
+            }}
+          >
             {error}
           </div>
         </div>
       )}
 
       {q && (
-        <QuestionCard question={q} index={current} total={questions.length} selected={answers[current]} onSelect={selectAnswer} dir={dir} />
+        <QuestionCard
+          question={q}
+          index={current}
+          total={questions.length}
+          selected={answers[current]}
+          onSelect={selectAnswer}
+          dir={dir}
+        />
       )}
 
       {/* Navigation footer */}
-      <div className="sticky bottom-0 px-4 py-4" style={{ background: "rgba(14,12,10,0.96)", backdropFilter: "blur(12px)", borderTop: "1px solid #1a1814" }}>
+      <div
+        className="sticky bottom-0 px-4 py-4"
+        style={{
+          background: "rgba(14,12,10,0.96)",
+          backdropFilter: "blur(12px)",
+          borderTop: "1px solid #1a1814",
+        }}
+      >
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
-          <motion.button whileTap={{ scale: 0.97 }} onClick={() => goTo(current - 1)} disabled={current === 0}
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => goTo(current - 1)}
+            disabled={current === 0}
             className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm transition-all"
-            style={{ border: "1px solid #2a2520", color: current === 0 ? "#2a2520" : "#6a6050" }}>
+            style={{
+              border: "1px solid #2a2520",
+              color: current === 0 ? "#2a2520" : "#6a6050",
+            }}
+          >
             <ChevronLeft size={14} /> Back
           </motion.button>
 
           {/* Dot indicators */}
           <div className="flex items-center gap-1.5">
             {questions.map((_, i) => (
-              <button key={i} onClick={() => goTo(i)}
+              <button
+                key={i}
+                onClick={() => goTo(i)}
                 className="h-1.5 rounded-full transition-all"
-                style={{ width: i === current ? 16 : 6, background: answers[i] !== null ? "#e8b84b" : i === current ? "#3a342c" : "#1a1814" }} />
+                style={{
+                  width: i === current ? 16 : 6,
+                  background:
+                    answers[i] !== null
+                      ? "#e8b84b"
+                      : i === current
+                        ? "#3a342c"
+                        : "#1a1814",
+                }}
+              />
             ))}
           </div>
 
           {isLast ? (
-            <motion.button whileTap={{ scale: 0.97 }} onClick={handleSubmit}
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={handleSubmit}
               className="flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-medium"
-              style={{ background: "#e8b84b", color: "#0e0c0a" }}>
+              style={{ background: "#e8b84b", color: "#0e0c0a" }}
+            >
               <Trophy size={14} />
               Submit ({answeredCount}/{questions.length})
             </motion.button>
           ) : (
-            <motion.button whileTap={{ scale: 0.97 }} onClick={() => goTo(current + 1)}
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => goTo(current + 1)}
               className="flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-medium"
-              style={{ background: answers[current] !== null ? "#e8b84b" : "#141210", color: answers[current] !== null ? "#0e0c0a" : "#3a342c" }}>
+              style={{
+                background: answers[current] !== null ? "#e8b84b" : "#141210",
+                color: answers[current] !== null ? "#0e0c0a" : "#3a342c",
+              }}
+            >
               Next <ChevronRight size={14} />
             </motion.button>
           )}
