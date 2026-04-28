@@ -786,7 +786,7 @@ function AcceptModal({ session, onClose, onConfirm }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Add Course Modal (for tutors, now in Sessions page)
-// ─────────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────���──────────
 
 function AddCourseModal({ onClose, onSave }) {
   const [form, setForm] = useState({
@@ -1350,36 +1350,62 @@ function TutorSessionCard({ session: s, userId, onRate, index }) {
 
 function StudentView({ sessions, userId, onRate }) {
   const router = useRouter();
-  const [tab, setTab] = useState("upcoming");
+  const [tab, setTab] = useState("requests");
 
   const outgoing = sessions.filter((s) => s.student_id === userId);
-  const upcoming = outgoing.filter((s) => s.status === "accepted");
-  const pending = outgoing.filter((s) => s.status === "pending");
+
+  // Requests: pending (not yet accepted by tutor)
+  const requests = outgoing.filter((s) => s.status === "pending");
+
+  // Confirmed: accepted sessions — split into live (joinable now) and upcoming (not yet)
+  const confirmed = outgoing
+    .filter((s) => s.status === "accepted")
+    .sort((a, b) => new Date(a.scheduled_at || 0) - new Date(b.scheduled_at || 0));
+  const live = confirmed.filter((s) => canJoinSession(s));
+  const upcoming = confirmed.filter((s) => !canJoinSession(s));
+
+  // Done: completed (and declined)
   const completed = outgoing.filter((s) => s.status === "completed");
   const declined = outgoing.filter((s) => s.status === "rejected");
-  const live = outgoing.filter((s) => canJoinSession(s));
-
-  const upcomingTotal = upcoming.length + pending.length + live.length;
 
   const TABS = [
-    { id: "upcoming", label: "Upcoming", count: upcomingTotal, icon: Calendar },
-    { id: "done", label: "Done", count: 0, icon: CheckCircle2 },
+    { id: "requests",  label: "Requests",  count: requests.length,  icon: Inbox },
+    { id: "confirmed", label: "Confirmed", count: confirmed.length, icon: Calendar },
+    { id: "done",      label: "Done",      count: 0,                icon: CheckCircle2 },
   ];
 
   const renderContent = () => {
-    if (tab === "upcoming") {
-      if (upcomingTotal === 0) {
-        return (
-          <EmptyState
-            icon={Calendar}
-            title="No upcoming sessions"
-            subtitle="Request a course from Explore — pending requests will show here too"
-            cta="Find a Tutor"
-            onCta={() => router.push("/explore")}
-          />
-        );
-      }
-      return (
+    // ── Requests tab ──────────────────────────────────────────────────────────
+    if (tab === "requests") {
+      return requests.length === 0 ? (
+        <EmptyState
+          icon={Inbox}
+          title="No pending requests"
+          subtitle="Sessions you request from Explore appear here until the tutor responds"
+          cta="Browse Tutors"
+          onCta={() => router.push("/explore")}
+        />
+      ) : (
+        <>
+          <SectionLabel>Awaiting tutor response · {requests.length}</SectionLabel>
+          {requests.map((s, i) => (
+            <StudentSessionCard key={s.id} session={s} userId={userId} onRate={onRate} index={i} />
+          ))}
+        </>
+      );
+    }
+
+    // ── Confirmed tab ─────────────────────────────────────────────────────────
+    if (tab === "confirmed") {
+      return confirmed.length === 0 ? (
+        <EmptyState
+          icon={Calendar}
+          title="No confirmed sessions yet"
+          subtitle="Tutors will accept your requests and schedule a time — check back soon"
+          cta="Browse Tutors"
+          onCta={() => router.push("/explore")}
+        />
+      ) : (
         <>
           {live.length > 0 && (
             <>
@@ -1391,17 +1417,9 @@ function StudentView({ sessions, userId, onRate }) {
           )}
           {upcoming.length > 0 && (
             <>
-              <SectionLabel>Confirmed · {upcoming.length}</SectionLabel>
+              <SectionLabel>Upcoming · {upcoming.length}</SectionLabel>
               {upcoming.map((s, i) => (
                 <StudentSessionCard key={s.id} session={s} userId={userId} onRate={onRate} index={i + live.length} />
-              ))}
-            </>
-          )}
-          {pending.length > 0 && (
-            <>
-              <SectionLabel>Pending requests · {pending.length}</SectionLabel>
-              {pending.map((s, i) => (
-                <StudentSessionCard key={s.id} session={s} userId={userId} onRate={onRate} index={i + live.length + upcoming.length} />
               ))}
             </>
           )}
@@ -1409,9 +1427,10 @@ function StudentView({ sessions, userId, onRate }) {
       );
     }
 
+    // ── Done tab ──────────────────────────────────────────────────────────────
     const all = [...completed, ...declined];
     return all.length === 0 ? (
-      <EmptyState icon={CheckCircle2} title="No completed sessions yet" subtitle="Finished sessions appear here with ratings and notes" />
+      <EmptyState icon={CheckCircle2} title="No completed sessions yet" subtitle="Finished sessions appear here with notes and resources from your tutor" />
     ) : (
       <>
         {completed.length > 0 && (
@@ -1749,7 +1768,7 @@ export default function SessionsPage() {
   const totalSessions = relevantSessions.length;
   const completedCount = relevantSessions.filter((s) => s.status === "completed").length;
   const pendingCount = relevantSessions.filter((s) => s.status === "pending").length;
-  const upcomingCount = relevantSessions.filter((s) => s.status === "accepted").length;
+  const acceptedCount = relevantSessions.filter((s) => s.status === "accepted").length;
 
   const nextSession = sessions
     .filter((s) => s.status === "accepted" && s.scheduled_at && new Date(s.scheduled_at) > new Date())
@@ -1811,7 +1830,7 @@ export default function SessionsPage() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           <StatCard icon={Layers} value={role === "tutor" ? courses.length : totalSessions} label={role === "tutor" ? "Courses" : "Total"} sub={role === "tutor" ? "published" : "all sessions"} color="#e8b84b" index={1} />
-          <StatCard icon={Clock} value={pendingCount + upcomingCount} label={role === "tutor" ? "Pending" : "Active"} sub={`${upcomingCount} upcoming`} color="#60a5fa" index={2} />
+          <StatCard icon={Clock} value={pendingCount + acceptedCount} label={role === "tutor" ? "Active" : "Active"} sub={`${pendingCount} pending · ${acceptedCount} confirmed`} color="#60a5fa" index={2} />
           <StatCard icon={CheckCircle2} value={completedCount} label="Done" sub="completed" color="#1d9e75" index={3} />
         </div>
 
