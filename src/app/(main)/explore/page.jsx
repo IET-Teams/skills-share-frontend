@@ -190,8 +190,8 @@ const TIME_SLOTS = [
 function buildDateOptions(count = 10) {
   const days = [];
   const now = new Date();
-  // start from tomorrow
-  for (let i = 1; i <= count; i++) {
+  // start from today not tomorrow
+  for (let i = 0; i <= count; i++) {
     const d = new Date(now);
     d.setDate(now.getDate() + i);
     d.setHours(0, 0, 0, 0);

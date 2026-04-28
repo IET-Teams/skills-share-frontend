@@ -259,13 +259,13 @@ function NotesPanel({ session, isTutor }) {
     if (!file) return;
     setUploading(true);
     try {
-      const path = `session-resources/${session.id}/${Date.now()}-${file.name}`;
+      const path = `${session.id}/${Date.now()}-${file.name}`;
       const { error: upErr } = await supabase.storage
-        .from("skillbridge-notes")
+        .from("session-resources")
         .upload(path, file);
       if (!upErr) {
         const { data: urlData } = supabase.storage
-          .from("skillbridge-notes")
+          .from("session-resources")
           .getPublicUrl(path);
         const { data: inserted } = await supabase
           .from("resources")
@@ -298,11 +298,22 @@ function NotesPanel({ session, isTutor }) {
   if (session.status !== "completed") return null;
 
   return (
-    <div className="mt-3 rounded-xl overflow-hidden" style={{ border: "1px solid #1a1814" }}>
-      <div className="flex items-center gap-2 px-3 py-2.5" style={{ background: "#0e0c0a" }}>
+    <div
+      className="mt-3 rounded-xl overflow-hidden"
+      style={{ border: "1px solid #1a1814" }}
+    >
+      <div
+        className="flex items-center gap-2 px-3 py-2.5"
+        style={{ background: "#0e0c0a" }}
+      >
         <FileText size={11} style={{ color: "#e8b84b" }} />
-        <span className="text-[11px] font-medium uppercase tracking-widest" style={{ color: "#4a4438" }}>
-          {isTutor ? "Session Resources — Upload for Student" : "Resources & Notes"}
+        <span
+          className="text-[11px] font-medium uppercase tracking-widest"
+          style={{ color: "#4a4438" }}
+        >
+          {isTutor
+            ? "Session Resources — Upload for Student"
+            : "Resources & Notes"}
         </span>
         {resources.length > 0 && (
           <span
@@ -329,9 +340,13 @@ function NotesPanel({ session, isTutor }) {
               style={{ background: "rgba(232,184,75,0.08)", color: "#e8b84b" }}
             >
               {uploading ? (
-                <><Loader2 size={9} className="animate-spin" /> Uploading…</>
+                <>
+                  <Loader2 size={9} className="animate-spin" /> Uploading…
+                </>
               ) : (
-                <><Upload size={9} /> Upload</>
+                <>
+                  <Upload size={9} /> Upload
+                </>
               )}
             </motion.button>
           </>
@@ -353,7 +368,10 @@ function NotesPanel({ session, isTutor }) {
                 <FileText size={13} style={{ color: "#e8b84b" }} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium truncate" style={{ color: "#f5f0e8" }}>
+                <p
+                  className="text-xs font-medium truncate"
+                  style={{ color: "#f5f0e8" }}
+                >
                   {r.title || r.file_name}
                 </p>
                 {r.file_size && (
@@ -388,7 +406,10 @@ function NotesPanel({ session, isTutor }) {
           ))}
         </div>
       ) : (
-        <p className="px-3 py-2.5 text-[11px]" style={{ color: "#3a3428", background: "#0a0908" }}>
+        <p
+          className="px-3 py-2.5 text-[11px]"
+          style={{ color: "#3a3428", background: "#0a0908" }}
+        >
           {isTutor
             ? "No resources uploaded yet — share notes, slides, or files with the student"
             : "No resources uploaded by tutor yet"}
@@ -403,7 +424,9 @@ function NotesPanel({ session, isTutor }) {
           style={{ borderColor: "#2a2520", background: "#0a0908" }}
         >
           <Plus size={14} style={{ color: "#3a3428" }} />
-          <p className="text-xs" style={{ color: "#6a6050" }}>Add resource</p>
+          <p className="text-xs" style={{ color: "#6a6050" }}>
+            Add resource
+          </p>
           <p className="text-[10px]" style={{ color: "#3a3428" }}>
             PDF, image, doc, zip · max 10 MB
           </p>
@@ -426,9 +449,7 @@ function RateModal({ session, raterId, onClose, onDone }) {
   const [done, setDone] = useState(false);
 
   const revieweeId =
-    raterId === session.student_id
-      ? session.tutor_id
-      : session.student_id;
+    raterId === session.student_id ? session.tutor_id : session.student_id;
 
   const handleSubmit = async () => {
     if (score === 0) return;
@@ -485,7 +506,10 @@ function RateModal({ session, raterId, onClose, onDone }) {
               {session.course?.title || session.course?.skill_name || "Session"}
             </p>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-white/5">
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 hover:bg-white/5"
+          >
             <X size={14} style={{ color: "#6a6050" }} />
           </button>
         </div>
@@ -497,7 +521,10 @@ function RateModal({ session, raterId, onClose, onDone }) {
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", bounce: 0.4 }}
               className="flex h-14 w-14 items-center justify-center rounded-2xl"
-              style={{ background: "rgba(29,158,117,0.15)", border: "1px solid rgba(29,158,117,0.3)" }}
+              style={{
+                background: "rgba(29,158,117,0.15)",
+                border: "1px solid rgba(29,158,117,0.3)",
+              }}
             >
               <CheckCircle2 size={26} style={{ color: "#1d9e75" }} />
             </motion.div>
@@ -508,7 +535,9 @@ function RateModal({ session, raterId, onClose, onDone }) {
         ) : (
           <div className="p-5 space-y-5">
             <div className="flex flex-col items-center gap-3">
-              <p className="text-xs" style={{ color: "#8a8070" }}>How was the session?</p>
+              <p className="text-xs" style={{ color: "#8a8070" }}>
+                How was the session?
+              </p>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((i) => (
                   <motion.button
@@ -522,7 +551,8 @@ function RateModal({ session, raterId, onClose, onDone }) {
                       size={30}
                       style={{
                         color: i <= (hovered || score) ? "#e8b84b" : "#2a2520",
-                        fill: i <= (hovered || score) ? "#e8b84b" : "transparent",
+                        fill:
+                          i <= (hovered || score) ? "#e8b84b" : "transparent",
                         transition: "all 0.12s",
                       }}
                     />
@@ -545,7 +575,10 @@ function RateModal({ session, raterId, onClose, onDone }) {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs" style={{ color: "#6a6050" }}>
+              <label
+                className="mb-1.5 block text-xs"
+                style={{ color: "#6a6050" }}
+              >
                 Leave a note (optional)
               </label>
               <textarea
@@ -554,7 +587,12 @@ function RateModal({ session, raterId, onClose, onDone }) {
                 placeholder="What did you think of the session?"
                 rows={3}
                 className="w-full resize-none rounded-xl border px-3 py-2.5 text-xs outline-none"
-                style={{ background: "#141210", borderColor: "#2a2520", color: "#f5f0e8", fontFamily: "inherit" }}
+                style={{
+                  background: "#141210",
+                  borderColor: "#2a2520",
+                  color: "#f5f0e8",
+                  fontFamily: "inherit",
+                }}
               />
             </div>
 
@@ -564,7 +602,8 @@ function RateModal({ session, raterId, onClose, onDone }) {
               disabled={score === 0 || submitting}
               className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium"
               style={{
-                background: score === 0 ? "#141210" : submitting ? "#c9a040" : "#e8b84b",
+                background:
+                  score === 0 ? "#141210" : submitting ? "#c9a040" : "#e8b84b",
                 color: score === 0 ? "#3a3428" : "#0e0c0a",
                 border: score === 0 ? "1px solid #2a2520" : "none",
                 cursor: score === 0 ? "not-allowed" : "pointer",
@@ -572,8 +611,12 @@ function RateModal({ session, raterId, onClose, onDone }) {
               }}
             >
               {submitting ? (
-                <><Loader2 size={14} className="animate-spin" /> Submitting…</>
-              ) : "Submit Rating"}
+                <>
+                  <Loader2 size={14} className="animate-spin" /> Submitting…
+                </>
+              ) : (
+                "Submit Rating"
+              )}
             </motion.button>
           </div>
         )}
@@ -587,9 +630,9 @@ function RateModal({ session, raterId, onClose, onDone }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SESSION_TIME_SLOTS = [
-  { id: "morning",   label: "Morning",   sub: "8 – 12 AM",  hour: 9  },
-  { id: "afternoon", label: "Afternoon", sub: "12 – 5 PM",  hour: 14 },
-  { id: "evening",   label: "Evening",   sub: "5 – 9 PM",   hour: 18 },
+  { id: "morning", label: "Morning", sub: "8 – 12 AM", hour: 9 },
+  { id: "afternoon", label: "Afternoon", sub: "12 – 5 PM", hour: 14 },
+  { id: "evening", label: "Evening", sub: "5 – 9 PM", hour: 18 },
 ];
 
 function buildSessionDates(count = 10) {
@@ -623,17 +666,29 @@ function SessionDatePicker({ onChange, accentColor = "#1d9e75" }) {
 
   const fmt = (d) => {
     const now = new Date();
-    const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);
-    const top = d.toDateString() === tomorrow.toDateString() ? "Tmrw" : d.toLocaleDateString("en-US", { weekday: "short" });
-    const bot = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    const top =
+      d.toDateString() === tomorrow.toDateString()
+        ? "Tmrw"
+        : d.toLocaleDateString("en-US", { weekday: "short" });
+    const bot = d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
     return { top, bot };
   };
 
   return (
     <div className="space-y-3">
       <div>
-        <p className="mb-2 text-xs font-medium" style={{ color: "#8a8070" }}>Proposed date</p>
-        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+        <p className="mb-2 text-xs font-medium" style={{ color: "#8a8070" }}>
+          Proposed date
+        </p>
+        <div
+          className="flex gap-2 overflow-x-auto pb-1"
+          style={{ scrollbarWidth: "none" }}
+        >
           {dates.map((d, i) => {
             const { top, bot } = fmt(d);
             const active = selectedDate?.toDateString() === d.toDateString();
@@ -643,19 +698,44 @@ function SessionDatePicker({ onChange, accentColor = "#1d9e75" }) {
                 whileTap={{ scale: 0.95 }}
                 onClick={() => pick(d, undefined)}
                 className="flex shrink-0 flex-col items-center gap-0.5 rounded-xl border px-3 py-2.5 transition-colors"
-                style={{ background: active ? "#e8b84b" : "#141210", borderColor: active ? "#e8b84b" : "#2a2520", minWidth: 54 }}
+                style={{
+                  background: active ? "#e8b84b" : "#141210",
+                  borderColor: active ? "#e8b84b" : "#2a2520",
+                  minWidth: 54,
+                }}
               >
-                <span className="text-[10px] font-semibold" style={{ color: active ? "#0e0c0a" : "#6a6050" }}>{top}</span>
-                <span className="text-xs font-bold" style={{ color: active ? "#0e0c0a" : "#f5f0e8" }}>{bot.split(" ")[1]}</span>
-                <span className="text-[9px]" style={{ color: active ? "rgba(0,0,0,0.45)" : "#3a3428" }}>{bot.split(" ")[0]}</span>
+                <span
+                  className="text-[10px] font-semibold"
+                  style={{ color: active ? "#0e0c0a" : "#6a6050" }}
+                >
+                  {top}
+                </span>
+                <span
+                  className="text-xs font-bold"
+                  style={{ color: active ? "#0e0c0a" : "#f5f0e8" }}
+                >
+                  {bot.split(" ")[1]}
+                </span>
+                <span
+                  className="text-[9px]"
+                  style={{ color: active ? "rgba(0,0,0,0.45)" : "#3a3428" }}
+                >
+                  {bot.split(" ")[0]}
+                </span>
               </motion.button>
             );
           })}
         </div>
       </div>
       {selectedDate && (
-        <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
-          <p className="mb-2 text-xs font-medium" style={{ color: "#8a8070" }}>Proposed time</p>
+        <motion.div
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.18 }}
+        >
+          <p className="mb-2 text-xs font-medium" style={{ color: "#8a8070" }}>
+            Proposed time
+          </p>
           <div className="grid grid-cols-3 gap-2">
             {SESSION_TIME_SLOTS.map((s, i) => {
               const active = selectedSlot === i;
@@ -670,8 +750,18 @@ function SessionDatePicker({ onChange, accentColor = "#1d9e75" }) {
                     borderColor: active ? `${accentColor}70` : "#2a2520",
                   }}
                 >
-                  <span className="text-xs font-semibold" style={{ color: active ? accentColor : "#c8bfb0" }}>{s.label}</span>
-                  <span className="text-[10px]" style={{ color: active ? accentColor : "#4a4438" }}>{s.sub}</span>
+                  <span
+                    className="text-xs font-semibold"
+                    style={{ color: active ? accentColor : "#c8bfb0" }}
+                  >
+                    {s.label}
+                  </span>
+                  <span
+                    className="text-[10px]"
+                    style={{ color: active ? accentColor : "#4a4438" }}
+                  >
+                    {s.sub}
+                  </span>
                 </motion.button>
               );
             })}
@@ -698,8 +788,13 @@ function AcceptModal({ session, onClose, onConfirm }) {
     setSubmitting(false);
   };
 
-  const inputCls = "w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition-colors focus:border-[rgba(232,184,75,0.4)]";
-  const inputStyle = { background: "#141210", borderColor: "#2a2520", color: "#f5f0e8" };
+  const inputCls =
+    "w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition-colors focus:border-[rgba(232,184,75,0.4)]";
+  const inputStyle = {
+    background: "#141210",
+    borderColor: "#2a2520",
+    color: "#f5f0e8",
+  };
 
   return (
     <motion.div
@@ -730,16 +825,25 @@ function AcceptModal({ session, onClose, onConfirm }) {
               Propose a time slot for {session.student?.name || "the student"}
             </p>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-white/5">
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 hover:bg-white/5"
+          >
             <X size={14} style={{ color: "#6a6050" }} />
           </button>
         </div>
 
         <div className="overflow-y-auto p-5 space-y-3.5">
-          <SessionDatePicker onChange={setScheduledTime} accentColor="#1d9e75" />
+          <SessionDatePicker
+            onChange={setScheduledTime}
+            accentColor="#1d9e75"
+          />
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium" style={{ color: "#8a8070" }}>
+            <label
+              className="mb-1.5 block text-xs font-medium"
+              style={{ color: "#8a8070" }}
+            >
               Meeting link (optional — add later)
             </label>
             <input
@@ -752,7 +856,10 @@ function AcceptModal({ session, onClose, onConfirm }) {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium" style={{ color: "#8a8070" }}>
+            <label
+              className="mb-1.5 block text-xs font-medium"
+              style={{ color: "#8a8070" }}
+            >
               Message to student (optional)
             </label>
             <textarea
@@ -779,9 +886,16 @@ function AcceptModal({ session, onClose, onConfirm }) {
               onClick={handleConfirm}
               disabled={submitting}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium"
-              style={{ background: submitting ? "#c9a040" : "#1d9e75", color: "#f5f0e8" }}
+              style={{
+                background: submitting ? "#c9a040" : "#1d9e75",
+                color: "#f5f0e8",
+              }}
             >
-              {submitting ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+              {submitting ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <CheckCircle2 size={13} />
+              )}
               {submitting ? "Confirming…" : "Accept & Send"}
             </motion.button>
           </div>
@@ -806,8 +920,13 @@ function UpdateMeetingModal({ session, onClose, onSave }) {
     onClose();
   };
 
-  const inputCls = "w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition-colors focus:border-[rgba(232,184,75,0.4)]";
-  const inputStyle = { background: "#141210", borderColor: "#2a2520", color: "#f5f0e8" };
+  const inputCls =
+    "w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition-colors focus:border-[rgba(232,184,75,0.4)]";
+  const inputStyle = {
+    background: "#141210",
+    borderColor: "#2a2520",
+    color: "#f5f0e8",
+  };
 
   return (
     <motion.div
@@ -831,19 +950,27 @@ function UpdateMeetingModal({ session, onClose, onSave }) {
           style={{ borderColor: "#1a1814" }}
         >
           <div>
-            <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>Update Meeting Link</p>
+            <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
+              Update Meeting Link
+            </p>
             <p className="text-xs mt-0.5" style={{ color: "#6a6050" }}>
               Set or update the meeting URL for this session
             </p>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-white/5">
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 hover:bg-white/5"
+          >
             <X size={14} style={{ color: "#6a6050" }} />
           </button>
         </div>
 
         <div className="p-5 space-y-4">
           <div>
-            <label className="mb-1.5 block text-xs font-medium" style={{ color: "#8a8070" }}>
+            <label
+              className="mb-1.5 block text-xs font-medium"
+              style={{ color: "#8a8070" }}
+            >
               Meeting URL
             </label>
             <input
@@ -872,9 +999,16 @@ function UpdateMeetingModal({ session, onClose, onSave }) {
               onClick={handleSave}
               disabled={saving}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium"
-              style={{ background: saving ? "#c9a040" : "#e8b84b", color: "#0e0c0a" }}
+              style={{
+                background: saving ? "#c9a040" : "#e8b84b",
+                color: "#0e0c0a",
+              }}
             >
-              {saving ? <Loader2 size={13} className="animate-spin" /> : <Link size={13} />}
+              {saving ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <Link size={13} />
+              )}
               {saving ? "Saving…" : "Save Link"}
             </motion.button>
           </div>
@@ -933,7 +1067,8 @@ function LiveKitRoom({ session, userId, userName, onEnd }) {
           LiveKit not configured
         </p>
         <p className="text-[11px]" style={{ color: "#3a3428" }}>
-          Add NEXT_PUBLIC_LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET to your environment variables
+          Add NEXT_PUBLIC_LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET
+          to your environment variables
         </p>
       </div>
     );
@@ -941,17 +1076,34 @@ function LiveKitRoom({ session, userId, userName, onEnd }) {
 
   if (loading) {
     return (
-      <div className="mt-3 flex items-center justify-center gap-2 rounded-xl border py-6" style={{ borderColor: "#2a2520", background: "#0e0c0a" }}>
-        <Loader2 size={14} className="animate-spin" style={{ color: "#e8b84b" }} />
-        <span className="text-xs" style={{ color: "#6a6050" }}>Connecting to room…</span>
+      <div
+        className="mt-3 flex items-center justify-center gap-2 rounded-xl border py-6"
+        style={{ borderColor: "#2a2520", background: "#0e0c0a" }}
+      >
+        <Loader2
+          size={14}
+          className="animate-spin"
+          style={{ color: "#e8b84b" }}
+        />
+        <span className="text-xs" style={{ color: "#6a6050" }}>
+          Connecting to room…
+        </span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="mt-3 rounded-xl border p-4 text-center" style={{ borderColor: "rgba(176,82,82,0.3)", background: "rgba(176,82,82,0.05)" }}>
-        <p className="text-xs font-medium" style={{ color: "#b05252" }}>Failed to connect: {error}</p>
+      <div
+        className="mt-3 rounded-xl border p-4 text-center"
+        style={{
+          borderColor: "rgba(176,82,82,0.3)",
+          background: "rgba(176,82,82,0.05)",
+        }}
+      >
+        <p className="text-xs font-medium" style={{ color: "#b05252" }}>
+          Failed to connect: {error}
+        </p>
       </div>
     );
   }
@@ -961,11 +1113,17 @@ function LiveKitRoom({ session, userId, userName, onEnd }) {
   const iframeSrc = `https://meet.livekit.io/custom?liveKitUrl=${encodeURIComponent(serverUrl)}&token=${encodeURIComponent(token)}`;
 
   return (
-    <div className="mt-3 rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(29,158,117,0.3)" }}>
+    <div
+      className="mt-3 rounded-2xl overflow-hidden"
+      style={{ border: "1px solid rgba(29,158,117,0.3)" }}
+    >
       {/* Header bar */}
       <div
         className="flex items-center justify-between px-3 py-2.5"
-        style={{ background: "rgba(29,158,117,0.08)", borderBottom: "1px solid rgba(29,158,117,0.15)" }}
+        style={{
+          background: "rgba(29,158,117,0.08)",
+          borderBottom: "1px solid rgba(29,158,117,0.15)",
+        }}
       >
         <div className="flex items-center gap-2">
           <span
@@ -980,7 +1138,11 @@ function LiveKitRoom({ session, userId, userName, onEnd }) {
           whileTap={{ scale: 0.97 }}
           onClick={onEnd}
           className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium"
-          style={{ background: "rgba(176,82,82,0.15)", color: "#b05252", border: "1px solid rgba(176,82,82,0.25)" }}
+          style={{
+            background: "rgba(176,82,82,0.15)",
+            color: "#b05252",
+            border: "1px solid rgba(176,82,82,0.25)",
+          }}
         >
           <PhoneOff size={10} /> End Session
         </motion.button>
@@ -990,7 +1152,12 @@ function LiveKitRoom({ session, userId, userName, onEnd }) {
       <iframe
         src={iframeSrc}
         allow="camera; microphone; fullscreen; display-capture"
-        style={{ width: "100%", height: 380, border: "none", background: "#0a0908" }}
+        style={{
+          width: "100%",
+          height: 380,
+          border: "none",
+          background: "#0a0908",
+        }}
         title="LiveKit Video Call"
       />
 
@@ -999,7 +1166,8 @@ function LiveKitRoom({ session, userId, userName, onEnd }) {
         style={{ background: "#0a0908", borderTop: "1px solid #1a1814" }}
       >
         <span className="text-[11px]" style={{ color: "#4a4438" }}>
-          Controls are inside the video panel above · Click &quot;End Session&quot; to mark as complete
+          Controls are inside the video panel above · Click &quot;End
+          Session&quot; to mark as complete
         </span>
       </div>
     </div>
@@ -1026,7 +1194,10 @@ function AddCourseModal({ onClose, onSave }) {
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
   const handleSave = async () => {
-    if (!form.title.trim()) { setErr("Course title is required"); return; }
+    if (!form.title.trim()) {
+      setErr("Course title is required");
+      return;
+    }
     setSaving(true);
     const { error } = await onSave({
       title: form.title.trim(),
@@ -1036,20 +1207,31 @@ function AddCourseModal({ onClose, onSave }) {
       description: [
         form.summary.trim() && `Summary: ${form.summary.trim()}`,
         form.duration.trim() && `Duration: ${form.duration.trim()}`,
-        form.prerequisites.trim() && `Prerequisites: ${form.prerequisites.trim()}`,
+        form.prerequisites.trim() &&
+          `Prerequisites: ${form.prerequisites.trim()}`,
         form.outcomes.trim() && `Outcomes: ${form.outcomes.trim()}`,
-      ].filter(Boolean).join("\n"),
+      ]
+        .filter(Boolean)
+        .join("\n"),
       duration_text: form.duration.trim(),
       prerequisites: form.prerequisites.trim(),
       outcomes: form.outcomes.trim(),
     });
     setSaving(false);
-    if (error) { setErr(error.message || "Could not save course"); return; }
+    if (error) {
+      setErr(error.message || "Could not save course");
+      return;
+    }
     onClose();
   };
 
-  const inputStyle = { background: "#141210", borderColor: "#2a2520", color: "#f5f0e8" };
-  const inputCls = "w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition-colors focus:border-[rgba(232,184,75,0.4)]";
+  const inputStyle = {
+    background: "#141210",
+    borderColor: "#2a2520",
+    color: "#f5f0e8",
+  };
+  const inputCls =
+    "w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition-colors focus:border-[rgba(232,184,75,0.4)]";
 
   return (
     <motion.div
@@ -1073,59 +1255,165 @@ function AddCourseModal({ onClose, onSave }) {
           style={{ borderColor: "#1a1814" }}
         >
           <div>
-            <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>New Course</p>
-            <p className="text-xs mt-0.5" style={{ color: "#6a6050" }}>Students can request this from Explore</p>
+            <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
+              New Course
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: "#6a6050" }}>
+              Students can request this from Explore
+            </p>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-white/5">
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 hover:bg-white/5"
+          >
             <X size={14} style={{ color: "#6a6050" }} />
           </button>
         </div>
 
         <div className="max-h-[70vh] overflow-y-auto p-5 space-y-3.5">
           <div>
-            <label className="mb-1.5 block text-xs font-medium" style={{ color: "#8a8070" }}>Course title *</label>
-            <input value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Python Basics Bootcamp" className={inputCls} style={inputStyle} />
+            <label
+              className="mb-1.5 block text-xs font-medium"
+              style={{ color: "#8a8070" }}
+            >
+              Course title *
+            </label>
+            <input
+              value={form.title}
+              onChange={(e) => set("title", e.target.value)}
+              placeholder="e.g. Python Basics Bootcamp"
+              className={inputCls}
+              style={inputStyle}
+            />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium" style={{ color: "#8a8070" }}>Primary skill</label>
-            <input value={form.skill_name} onChange={(e) => set("skill_name", e.target.value)} placeholder="e.g. Python" className={inputCls} style={inputStyle} list="skill_sugg" />
+            <label
+              className="mb-1.5 block text-xs font-medium"
+              style={{ color: "#8a8070" }}
+            >
+              Primary skill
+            </label>
+            <input
+              value={form.skill_name}
+              onChange={(e) => set("skill_name", e.target.value)}
+              placeholder="e.g. Python"
+              className={inputCls}
+              style={inputStyle}
+              list="skill_sugg"
+            />
             <datalist id="skill_sugg">
-              {SKILL_SUGGESTIONS.map((s) => <option key={s} value={s} />)}
+              {SKILL_SUGGESTIONS.map((s) => (
+                <option key={s} value={s} />
+              ))}
             </datalist>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium" style={{ color: "#8a8070" }}>Level</label>
-            <select value={form.level} onChange={(e) => set("level", e.target.value)} className={inputCls} style={inputStyle}>
-              {["Beginner", "Intermediate", "Advanced"].map((l) => <option key={l} value={l}>{l}</option>)}
+            <label
+              className="mb-1.5 block text-xs font-medium"
+              style={{ color: "#8a8070" }}
+            >
+              Level
+            </label>
+            <select
+              value={form.level}
+              onChange={(e) => set("level", e.target.value)}
+              className={inputCls}
+              style={inputStyle}
+            >
+              {["Beginner", "Intermediate", "Advanced"].map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium" style={{ color: "#8a8070" }}>Summary</label>
-            <textarea value={form.summary} onChange={(e) => set("summary", e.target.value)} placeholder="What students will learn" rows={3} className={`${inputCls} resize-none`} style={inputStyle} />
+            <label
+              className="mb-1.5 block text-xs font-medium"
+              style={{ color: "#8a8070" }}
+            >
+              Summary
+            </label>
+            <textarea
+              value={form.summary}
+              onChange={(e) => set("summary", e.target.value)}
+              placeholder="What students will learn"
+              rows={3}
+              className={`${inputCls} resize-none`}
+              style={inputStyle}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-xs font-medium" style={{ color: "#8a8070" }}>Duration</label>
-              <input value={form.duration} onChange={(e) => set("duration", e.target.value)} placeholder="e.g. 4 weeks" className={inputCls} style={inputStyle} />
+              <label
+                className="mb-1.5 block text-xs font-medium"
+                style={{ color: "#8a8070" }}
+              >
+                Duration
+              </label>
+              <input
+                value={form.duration}
+                onChange={(e) => set("duration", e.target.value)}
+                placeholder="e.g. 4 weeks"
+                className={inputCls}
+                style={inputStyle}
+              />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium" style={{ color: "#8a8070" }}>Prerequisites</label>
-              <input value={form.prerequisites} onChange={(e) => set("prerequisites", e.target.value)} placeholder="Optional" className={inputCls} style={inputStyle} />
+              <label
+                className="mb-1.5 block text-xs font-medium"
+                style={{ color: "#8a8070" }}
+              >
+                Prerequisites
+              </label>
+              <input
+                value={form.prerequisites}
+                onChange={(e) => set("prerequisites", e.target.value)}
+                placeholder="Optional"
+                className={inputCls}
+                style={inputStyle}
+              />
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium" style={{ color: "#8a8070" }}>Outcomes</label>
-            <textarea value={form.outcomes} onChange={(e) => set("outcomes", e.target.value)} placeholder="What students achieve by the end" rows={2} className={`${inputCls} resize-none`} style={inputStyle} />
+            <label
+              className="mb-1.5 block text-xs font-medium"
+              style={{ color: "#8a8070" }}
+            >
+              Outcomes
+            </label>
+            <textarea
+              value={form.outcomes}
+              onChange={(e) => set("outcomes", e.target.value)}
+              placeholder="What students achieve by the end"
+              rows={2}
+              className={`${inputCls} resize-none`}
+              style={inputStyle}
+            />
           </div>
-          {err && <p className="text-xs" style={{ color: "#b05252" }}>{err}</p>}
+          {err && (
+            <p className="text-xs" style={{ color: "#b05252" }}>
+              {err}
+            </p>
+          )}
           <div className="flex gap-2 pt-1">
-            <motion.button whileTap={{ scale: 0.97 }} onClick={onClose} className="flex-1 rounded-xl border py-2.5 text-sm" style={{ borderColor: "#2a2520", color: "#6a6050" }}>Cancel</motion.button>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={onClose}
+              className="flex-1 rounded-xl border py-2.5 text-sm"
+              style={{ borderColor: "#2a2520", color: "#6a6050" }}
+            >
+              Cancel
+            </motion.button>
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={handleSave}
               disabled={saving}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium"
-              style={{ background: saving ? "#1a1814" : "#e8b84b", color: saving ? "#3a342c" : "#0e0c0a" }}
+              style={{
+                background: saving ? "#1a1814" : "#e8b84b",
+                color: saving ? "#3a342c" : "#0e0c0a",
+              }}
             >
               {saving && <Loader2 size={13} className="animate-spin" />}
               {saving ? "Saving..." : "Add Course"}
@@ -1143,7 +1431,10 @@ function AddCourseModal({ onClose, onSave }) {
 
 function TabBar({ tabs, active, onChange }) {
   return (
-    <div className="flex gap-1 rounded-xl p-1" style={{ background: "#0a0908", border: "1px solid #2a2520" }}>
+    <div
+      className="flex gap-1 rounded-xl p-1"
+      style={{ background: "#0a0908", border: "1px solid #2a2520" }}
+    >
       {tabs.map(({ id, label, count, icon: Icon }) => (
         <button
           key={id}
@@ -1165,7 +1456,8 @@ function TabBar({ tabs, active, onChange }) {
             <span
               className="relative z-10 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold"
               style={{
-                background: active === id ? "rgba(0,0,0,0.18)" : "rgba(232,184,75,0.18)",
+                background:
+                  active === id ? "rgba(0,0,0,0.18)" : "rgba(232,184,75,0.18)",
                 color: active === id ? "#0e0c0a" : "#e8b84b",
               }}
             >
@@ -1180,7 +1472,10 @@ function TabBar({ tabs, active, onChange }) {
 
 function SectionLabel({ children }) {
   return (
-    <p className="text-[10px] font-semibold uppercase tracking-widest mb-2 mt-1" style={{ color: "#4a4438" }}>
+    <p
+      className="text-[10px] font-semibold uppercase tracking-widest mb-2 mt-1"
+      style={{ color: "#4a4438" }}
+    >
       {children}
     </p>
   );
@@ -1194,7 +1489,13 @@ function fmtTime(dt) {
   if (isToday) {
     return `Today · ${d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} — ${new Date(d.getTime() + 3600000).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`;
   }
-  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 // A session is "live" when it's accepted and today's date matches the scheduled date
@@ -1216,7 +1517,7 @@ function canJoinSession(s) {
 function StudentSessionCard({ session: s, userId, onRate, index }) {
   const router = useRouter();
   const other = s.student_id === userId ? s.tutor : s.student;
-  
+
   const isPending = s.status === "pending";
   const isUpcoming = s.status === "accepted";
   const isCompleted = s.status === "completed";
@@ -1238,8 +1539,12 @@ function StudentSessionCard({ session: s, userId, onRate, index }) {
         borderColor: isPending ? "rgba(232,184,75,0.2)" : "#2a2520",
       }}
     >
-      {isPending && <div style={{ height: 2, background: "rgba(232,184,75,0.35)" }} />}
-      {isUpcoming && <div style={{ height: 2, background: "rgba(29,158,117,0.5)" }} />}
+      {isPending && (
+        <div style={{ height: 2, background: "rgba(232,184,75,0.35)" }} />
+      )}
+      {isUpcoming && (
+        <div style={{ height: 2, background: "rgba(29,158,117,0.5)" }} />
+      )}
 
       <div className="p-4">
         <div className="flex items-start gap-3">
@@ -1247,7 +1552,10 @@ function StudentSessionCard({ session: s, userId, onRate, index }) {
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-sm font-semibold truncate" style={{ color: "#f5f0e8" }}>
+                <p
+                  className="text-sm font-semibold truncate"
+                  style={{ color: "#f5f0e8" }}
+                >
                   {courseTitle}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: "#8a8070" }}>
@@ -1257,12 +1565,18 @@ function StudentSessionCard({ session: s, userId, onRate, index }) {
               <StatusBadge status={s.status} />
             </div>
             {isPending && preferredStr && (
-              <p className="mt-1.5 flex items-center gap-1.5 text-xs" style={{ color: "#8a8070" }}>
+              <p
+                className="mt-1.5 flex items-center gap-1.5 text-xs"
+                style={{ color: "#8a8070" }}
+              >
                 <Clock size={10} /> Preferred: {preferredStr}
               </p>
             )}
             {!isPending && timeStr && (
-              <p className="mt-1.5 flex items-center gap-1.5 text-xs" style={{ color: "#6a6050" }}>
+              <p
+                className="mt-1.5 flex items-center gap-1.5 text-xs"
+                style={{ color: "#6a6050" }}
+              >
                 <Calendar size={10} /> {timeStr}
               </p>
             )}
@@ -1275,7 +1589,10 @@ function StudentSessionCard({ session: s, userId, onRate, index }) {
               </p>
             )}
             {isCompleted && s.duration_minutes && (
-              <span className="mt-1.5 flex items-center gap-1 text-[11px]" style={{ color: "#6a6050" }}>
+              <span
+                className="mt-1.5 flex items-center gap-1 text-[11px]"
+                style={{ color: "#6a6050" }}
+              >
                 <Clock size={9} /> {s.duration_minutes} min session
               </span>
             )}
@@ -1286,7 +1603,11 @@ function StudentSessionCard({ session: s, userId, onRate, index }) {
         {isPending && (
           <div
             className="mt-3 flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-medium"
-            style={{ background: "rgba(232,184,75,0.05)", borderColor: "rgba(232,184,75,0.18)", color: "#8a8070" }}
+            style={{
+              background: "rgba(232,184,75,0.05)",
+              borderColor: "rgba(232,184,75,0.18)",
+              color: "#8a8070",
+            }}
           >
             <Clock size={12} style={{ color: "#e8b84b" }} />
             <span>Awaiting tutor response</span>
@@ -1312,7 +1633,11 @@ function StudentSessionCard({ session: s, userId, onRate, index }) {
           <div className="mt-3 flex gap-2">
             <div
               className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-medium"
-              style={{ background: "rgba(29,158,117,0.06)", borderColor: "rgba(29,158,117,0.18)", color: "#1d9e75" }}
+              style={{
+                background: "rgba(29,158,117,0.06)",
+                borderColor: "rgba(29,158,117,0.18)",
+                color: "#1d9e75",
+              }}
             >
               <Calendar size={12} /> Session scheduled
             </div>
@@ -1385,16 +1710,25 @@ function TutorIncomingCard({ session: s, onAccept, onDecline, index }) {
       <div style={{ height: 2, background: "rgba(232,184,75,0.4)" }} />
       <div className="p-4">
         <div className="flex items-start gap-3 mb-4">
-          <Avatar name={s.student?.name} url={s.student?.avatar_url} size={10} />
+          <Avatar
+            name={s.student?.name}
+            url={s.student?.avatar_url}
+            size={10}
+          />
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <p className="text-sm font-semibold" style={{ color: "#f5f0e8" }}>
+                <p
+                  className="text-sm font-semibold"
+                  style={{ color: "#f5f0e8" }}
+                >
                   {s.student?.name || "Student"}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: "#8a8070" }}>
                   Wants to learn:{" "}
-                  <span style={{ color: "#e8b84b", fontWeight: 500 }}>{courseTitle}</span>
+                  <span style={{ color: "#e8b84b", fontWeight: 500 }}>
+                    {courseTitle}
+                  </span>
                 </p>
               </div>
               <StatusBadge status={s.status} />
@@ -1402,12 +1736,18 @@ function TutorIncomingCard({ session: s, onAccept, onDecline, index }) {
 
             {/* Requested time slot from student */}
             {s.preferred_time && (
-              <p className="mt-1.5 flex items-center gap-1.5 text-xs" style={{ color: "#6a6050" }}>
+              <p
+                className="mt-1.5 flex items-center gap-1.5 text-xs"
+                style={{ color: "#6a6050" }}
+              >
                 <Clock size={10} /> Preferred: {fmtTime(s.preferred_time)}
               </p>
             )}
             {timeStr && !s.preferred_time && (
-              <p className="mt-1.5 flex items-center gap-1.5 text-xs" style={{ color: "#6a6050" }}>
+              <p
+                className="mt-1.5 flex items-center gap-1.5 text-xs"
+                style={{ color: "#6a6050" }}
+              >
                 <Calendar size={10} /> {timeStr}
               </p>
             )}
@@ -1431,7 +1771,11 @@ function TutorIncomingCard({ session: s, onAccept, onDecline, index }) {
             className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2.5 text-sm font-medium"
             style={{ borderColor: "#2a2520", color: "#6a6050" }}
           >
-            {loading === "decline" ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
+            {loading === "decline" ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <XCircle size={13} />
+            )}
             Decline
           </motion.button>
           <motion.button
@@ -1439,9 +1783,16 @@ function TutorIncomingCard({ session: s, onAccept, onDecline, index }) {
             onClick={() => handle("accept")}
             disabled={!!loading}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold"
-            style={{ background: loading === "accept" ? "#c9a040" : "#1d9e75", color: "#f5f0e8" }}
+            style={{
+              background: loading === "accept" ? "#c9a040" : "#1d9e75",
+              color: "#f5f0e8",
+            }}
           >
-            {loading === "accept" ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+            {loading === "accept" ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <CheckCircle2 size={13} />
+            )}
             Accept & Schedule
           </motion.button>
           <motion.button
@@ -1463,7 +1814,15 @@ function TutorIncomingCard({ session: s, onAccept, onDecline, index }) {
 // Tutor Session Card (Upcoming / Completed)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function TutorSessionCard({ session: s, userId, userName, onRate, onUpdateMeeting, onEndSession, index }) {
+function TutorSessionCard({
+  session: s,
+  userId,
+  userName,
+  onRate,
+  onUpdateMeeting,
+  onEndSession,
+  index,
+}) {
   const router = useRouter();
   const isUpcoming = s.status === "accepted";
   const isCompleted = s.status === "completed";
@@ -1494,20 +1853,29 @@ function TutorSessionCard({ session: s, userId, userName, onRate, onUpdateMeetin
         borderColor: live
           ? "rgba(29,158,117,0.4)"
           : isUpcoming
-          ? "rgba(29,158,117,0.18)"
-          : "#2a2520",
+            ? "rgba(29,158,117,0.18)"
+            : "#2a2520",
       }}
     >
       {live && <div style={{ height: 2, background: "#1d9e75" }} />}
-      {isUpcoming && !live && <div style={{ height: 2, background: "rgba(29,158,117,0.35)" }} />}
+      {isUpcoming && !live && (
+        <div style={{ height: 2, background: "rgba(29,158,117,0.35)" }} />
+      )}
 
       <div className="p-4">
         <div className="flex items-start gap-3">
-          <Avatar name={s.student?.name} url={s.student?.avatar_url} size={10} />
+          <Avatar
+            name={s.student?.name}
+            url={s.student?.avatar_url}
+            size={10}
+          />
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-sm font-semibold truncate" style={{ color: "#f5f0e8" }}>
+                <p
+                  className="text-sm font-semibold truncate"
+                  style={{ color: "#f5f0e8" }}
+                >
                   {courseTitle}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: "#8a8070" }}>
@@ -1518,7 +1886,11 @@ function TutorSessionCard({ session: s, userId, userName, onRate, onUpdateMeetin
                 {live && (
                   <span
                     className="flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-semibold"
-                    style={{ background: "rgba(29,158,117,0.12)", borderColor: "rgba(29,158,117,0.3)", color: "#1d9e75" }}
+                    style={{
+                      background: "rgba(29,158,117,0.12)",
+                      borderColor: "rgba(29,158,117,0.3)",
+                      color: "#1d9e75",
+                    }}
                   >
                     <span className="h-1.5 w-1.5 rounded-full bg-[#1d9e75] animate-pulse" />
                     Live
@@ -1528,18 +1900,27 @@ function TutorSessionCard({ session: s, userId, userName, onRate, onUpdateMeetin
               </div>
             </div>
             {timeStr && (
-              <p className="mt-1.5 flex items-center gap-1.5 text-xs" style={{ color: "#6a6050" }}>
+              <p
+                className="mt-1.5 flex items-center gap-1.5 text-xs"
+                style={{ color: "#6a6050" }}
+              >
                 <Calendar size={10} /> {timeStr}
               </p>
             )}
             {s.meeting_link && (
-              <p className="mt-1 flex items-center gap-1.5 text-[11px]" style={{ color: "#4a4438" }}>
+              <p
+                className="mt-1 flex items-center gap-1.5 text-[11px]"
+                style={{ color: "#4a4438" }}
+              >
                 <Link size={9} />
                 <span className="truncate">{s.meeting_link}</span>
               </p>
             )}
             {isCompleted && s.duration_minutes && (
-              <span className="mt-1.5 flex items-center gap-1 text-[11px]" style={{ color: "#6a6050" }}>
+              <span
+                className="mt-1.5 flex items-center gap-1 text-[11px]"
+                style={{ color: "#6a6050" }}
+              >
                 <Clock size={9} /> {s.duration_minutes} min session
               </span>
             )}
@@ -1552,7 +1933,11 @@ function TutorSessionCard({ session: s, userId, userName, onRate, onUpdateMeetin
             <div className="flex gap-2">
               <div
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-medium"
-                style={{ background: "rgba(29,158,117,0.06)", borderColor: "rgba(29,158,117,0.18)", color: "#1d9e75" }}
+                style={{
+                  background: "rgba(29,158,117,0.06)",
+                  borderColor: "rgba(29,158,117,0.18)",
+                  color: "#1d9e75",
+                }}
               >
                 <Calendar size={12} /> Session scheduled
               </div>
@@ -1570,7 +1955,11 @@ function TutorSessionCard({ session: s, userId, userName, onRate, onUpdateMeetin
               whileTap={{ scale: 0.97 }}
               onClick={() => onUpdateMeeting(s)}
               className="flex w-full items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-medium"
-              style={{ borderColor: "rgba(232,184,75,0.2)", color: "#e8b84b", background: "rgba(232,184,75,0.05)" }}
+              style={{
+                borderColor: "rgba(232,184,75,0.2)",
+                color: "#e8b84b",
+                background: "rgba(232,184,75,0.05)",
+              }}
             >
               <Link size={11} />
               {s.meeting_link ? "Update Meeting Link" : "Add Meeting Link"}
@@ -1600,7 +1989,13 @@ function TutorSessionCard({ session: s, userId, userName, onRate, onUpdateMeetin
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setShowLiveKit((v) => !v)}
                   className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold"
-                  style={{ background: showLiveKit ? "#0e2d24" : "#1d9e75", color: showLiveKit ? "#1d9e75" : "#f5f0e8", border: showLiveKit ? "1px solid rgba(29,158,117,0.3)" : "none" }}
+                  style={{
+                    background: showLiveKit ? "#0e2d24" : "#1d9e75",
+                    color: showLiveKit ? "#1d9e75" : "#f5f0e8",
+                    border: showLiveKit
+                      ? "1px solid rgba(29,158,117,0.3)"
+                      : "none",
+                  }}
                 >
                   <Video size={14} />
                   {showLiveKit ? "Hide Call" : "Start LiveKit Call"}
@@ -1623,7 +2018,11 @@ function TutorSessionCard({ session: s, userId, userName, onRate, onUpdateMeetin
                 whileTap={{ scale: 0.97 }}
                 onClick={() => onUpdateMeeting(s)}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-medium"
-                style={{ borderColor: "rgba(232,184,75,0.2)", color: "#e8b84b", background: "rgba(232,184,75,0.05)" }}
+                style={{
+                  borderColor: "rgba(232,184,75,0.2)",
+                  color: "#e8b84b",
+                  background: "rgba(232,184,75,0.05)",
+                }}
               >
                 <Link size={11} />
                 {s.meeting_link ? "Update Link" : "Add Meeting Link"}
@@ -1632,7 +2031,11 @@ function TutorSessionCard({ session: s, userId, userName, onRate, onUpdateMeetin
                 whileTap={{ scale: 0.97 }}
                 onClick={() => onEndSession(s.id)}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-medium"
-                style={{ borderColor: "rgba(176,82,82,0.25)", color: "#b05252", background: "rgba(176,82,82,0.06)" }}
+                style={{
+                  borderColor: "rgba(176,82,82,0.25)",
+                  color: "#b05252",
+                  background: "rgba(176,82,82,0.06)",
+                }}
               >
                 <PhoneOff size={11} /> End Session
               </motion.button>
@@ -1666,14 +2069,21 @@ function TutorSessionCard({ session: s, userId, userName, onRate, onUpdateMeetin
                 whileTap={{ scale: 0.97 }}
                 onClick={() => onRate(s)}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold"
-                style={{ background: "rgba(232,184,75,0.1)", color: "#e8b84b", border: "1px solid rgba(232,184,75,0.2)" }}
+                style={{
+                  background: "rgba(232,184,75,0.1)",
+                  color: "#e8b84b",
+                  border: "1px solid rgba(232,184,75,0.2)",
+                }}
               >
                 <Star size={12} /> Rate Student
               </motion.button>
             </div>
             {/* Resources Panel */}
             <NotesPanel session={s} isTutor={s.tutor_id === userId} />
-            <p className="mt-1.5 text-center text-[10px]" style={{ color: "#3a3428" }}>
+            <p
+              className="mt-1.5 text-center text-[10px]"
+              style={{ color: "#3a3428" }}
+            >
               Student downloads resources as read-only
             </p>
           </>
