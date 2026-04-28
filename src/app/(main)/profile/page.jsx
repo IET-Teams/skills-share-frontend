@@ -177,116 +177,50 @@ function ProfileHero({ profile, user, role, completedCount, avgRating, totalSess
   const joinedDate = profile?.created_at
     ? new Date(profile.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" })
     : null;
-
-  // For public profiles, show based on what the viewed user is (tutor vs student)
   const displayRole = isOwnProfile ? role : viewedRole;
+  const isTutor = displayRole === "tutor";
+
+  const statItems = isTutor
+    ? [
+        { icon: <CheckCircle2 size={14} style={{ color: "#1d9e75" }} />, val: completedCount || 0, label: "Sessions", color: "#1d9e75" },
+        { icon: <Star size={14} style={{ color: "#e8b84b", fill: "#e8b84b" }} />, val: avgRating || "—", label: "Avg Rating", color: "#e8b84b" },
+        { icon: <Users size={14} style={{ color: "#e8b84b" }} />, val: totalSessions || 0, label: "Total Sessions", color: "#e8b84b" },
+      ]
+    : isOwnProfile
+    ? [
+        { icon: <CheckCircle2 size={14} style={{ color: "#1d9e75" }} />, val: completedCount || 0, label: "Sessions done", color: "#1d9e75" },
+        { icon: <Flame size={14} style={{ color: "#fb923c" }} />, val: dayStreak || 0, label: "Day streak", color: "#fb923c" },
+        { icon: <TrendingUp size={14} style={{ color: "#e8b84b" }} />, val: avgAssessment ? `${avgAssessment}%` : "—", label: "Avg assessment", color: "#e8b84b" },
+      ]
+    : [
+        { icon: <CheckCircle2 size={14} style={{ color: "#1d9e75" }} />, val: completedCount || 0, label: "Sessions", color: "#1d9e75" },
+      ];
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border p-5 md:p-6" style={{ background: "#0a0908", borderColor: "#2a2520" }}>
-      <div className="absolute top-4 right-4 flex items-center gap-2">
-        <div
-          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold tracking-wide"
-          style={{
-            background: displayRole === "student" ? "rgba(232,184,75,0.1)" : "rgba(29,158,117,0.1)",
-            border: `1px solid ${displayRole === "student" ? "rgba(232,184,75,0.25)" : "rgba(29,158,117,0.25)"}`,
-            color: displayRole === "student" ? "#e8b84b" : "#1d9e75",
-            letterSpacing: "0.08em",
-          }}
-        >
-          {displayRole === "student" ? <GraduationCap size={11} /> : <BookOpen size={11} />}
-          {displayRole === "student" ? "STUDENT" : "TUTOR"}
-        </div>
-        {isOwnProfile && (
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={onEdit}
-            className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-white/5 transition-colors"
-            style={{ borderColor: "rgba(232,184,75,0.2)", color: "#e8b84b" }}
+    <div className="relative overflow-hidden rounded-2xl border" style={{ background: "#0a0908", borderColor: "#2a2520" }}>
+      {/* Top accent bar */}
+      <div style={{ height: 3, background: "linear-gradient(90deg, #e8b84b 0%, rgba(232,184,75,0.2) 100%)" }} />
+
+      <div className="p-5 md:p-6">
+        {/* Top row: role badge + edit */}
+        <div className="flex items-center justify-between mb-5">
+          <div
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-bold tracking-widest"
+            style={{
+              background: isTutor ? "rgba(29,158,117,0.1)" : "rgba(232,184,75,0.1)",
+              border: `1px solid ${isTutor ? "rgba(29,158,117,0.25)" : "rgba(232,184,75,0.25)"}`,
+              color: isTutor ? "#1d9e75" : "#e8b84b",
+            }}
           >
-            <Edit2 size={11} /> Edit
-          </motion.button>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-5">
-        <div className="flex items-start gap-4 pr-20">
-          <div className="relative shrink-0">
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt={name} className="h-20 w-20 rounded-2xl object-cover" style={{ border: "2px solid #2a2520" }} />
-            ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-2xl text-2xl font-medium"
-                style={{ background: "#141210", border: "1px solid #2a2520", color: "#e8b84b" }}
-              >
-                {name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)}
-              </div>
-            )}
-            <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 flex items-center justify-center" style={{ background: "#0a0908", borderColor: "#0a0908" }}>
-              <div className="h-2 w-2 rounded-full" style={{ background: "#1d9e75" }} />
-            </div>
+            {isTutor ? <BookOpen size={10} /> : <GraduationCap size={10} />}
+            {isTutor ? "TUTOR" : "STUDENT"}
           </div>
-
-          <div className="flex-1 min-w-0 pt-1">
-            <h1 className="text-xl font-medium leading-tight" style={{ color: "#f5f0e8" }}>{name}</h1>
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-              {profile?.department && (
-                <span className="flex items-center gap-1 text-xs" style={{ color: "#8a8070" }}>
-                  <BookMarked size={10} /> {profile.department}
-                </span>
-              )}
-              {profile?.location && (
-                <span className="flex items-center gap-1 text-xs" style={{ color: "#8a8070" }}>
-                  <MapPin size={10} /> {profile.location}
-                </span>
-              )}
-              {joinedDate && (
-                <span className="flex items-center gap-1 text-xs" style={{ color: "#8a8070" }}>
-                  <Calendar size={10} /> Joined {joinedDate}
-                </span>
-              )}
-            </div>
-            {profile?.bio && (
-              <p className="mt-2.5 text-xs leading-relaxed" style={{ color: "#6a6050" }}>{profile.bio}</p>
-            )}
-          </div>
-        </div>
-
-        <Divider />
-
-        {/* Stats */}
-        {displayRole === "tutor" ? (
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: "rgba(232,184,75,0.07)" }}>
-                <CheckCircle2 size={13} style={{ color: "#e8b84b" }} />
-              </div>
-              <div>
-                <p className="text-sm font-medium leading-none" style={{ color: "#f5f0e8" }}>{completedCount || 0}</p>
-                <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>Sessions</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: "rgba(232,184,75,0.07)" }}>
-                <Star size={13} style={{ color: "#e8b84b" }} />
-              </div>
-              <div>
-                <p className="text-sm font-medium leading-none" style={{ color: "#f5f0e8" }}>{avgRating || "—"}</p>
-                <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>Rating</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: "rgba(232,184,75,0.07)" }}>
-                <Users size={13} style={{ color: "#e8b84b" }} />
-              </div>
-              <div>
-                <p className="text-sm font-medium leading-none" style={{ color: "#f5f0e8" }}>{totalSessions || 0}</p>
-                <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>Total</p>
-              </div>
-            </div>
-            {isOwnProfile && (
+          <div className="flex items-center gap-2">
+            {isTutor && isOwnProfile && (
               <motion.button
                 whileTap={{ scale: 0.97 }}
                 onClick={onAvailabilityToggle}
-                className="ml-auto flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all"
+                className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all"
                 style={{
                   background: isAvailable ? "rgba(29,158,117,0.1)" : "transparent",
                   borderColor: isAvailable ? "rgba(29,158,117,0.35)" : "#2a2520",
@@ -294,48 +228,79 @@ function ProfileHero({ profile, user, role, completedCount, avgRating, totalSess
                 }}
               >
                 {isAvailable ? (
-                  <><div className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" /> Available</>
+                  <><div className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: "#1d9e75" }} /> Available</>
                 ) : (
                   <><WifiOff size={9} /> Unavailable</>
                 )}
               </motion.button>
             )}
+            {isOwnProfile && (
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={onEdit}
+                className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-white/5"
+                style={{ borderColor: "rgba(232,184,75,0.2)", color: "#e8b84b" }}
+              >
+                <Edit2 size={11} /> Edit
+              </motion.button>
+            )}
           </div>
-        ) : (
-          // Student stats — only shown on own profile
-          isOwnProfile ? (
-            <div className="grid grid-cols-3 gap-0 rounded-xl overflow-hidden" style={{ background: "#141210", border: "1px solid #1e1c18" }}>
-              <div className="flex flex-col items-center justify-center py-3">
-                <CheckCircle2 size={12} style={{ color: "#1d9e75" }} className="mb-1" />
-                <p className="text-lg font-semibold leading-none" style={{ color: "#f5f0e8" }}>{completedCount || 0}</p>
-                <p className="mt-1 text-[10px]" style={{ color: "#6a6050" }}>Sessions done</p>
+        </div>
+
+        {/* Avatar + info */}
+        <div className="flex items-start gap-4">
+          <div className="relative shrink-0">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt={name} className="rounded-2xl object-cover" style={{ width: 80, height: 80, border: "2px solid #2a2520" }} />
+            ) : (
+              <div className="flex items-center justify-center rounded-2xl text-2xl font-semibold"
+                style={{ width: 80, height: 80, background: "rgba(232,184,75,0.08)", border: "2px solid rgba(232,184,75,0.2)", color: "#e8b84b" }}
+              >
+                {name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)}
               </div>
-              <div className="flex flex-col items-center justify-center py-3" style={{ borderLeft: "1px solid #1e1c18", borderRight: "1px solid #1e1c18" }}>
-                <Flame size={12} style={{ color: "#fb923c" }} className="mb-1" />
-                <p className="text-lg font-semibold leading-none" style={{ color: "#fb923c" }}>{dayStreak || 0}</p>
-                <p className="mt-1 text-[10px]" style={{ color: "#6a6050" }}>Day streak</p>
-              </div>
-              <div className="flex flex-col items-center justify-center py-3">
-                <TrendingUp size={12} style={{ color: "#e8b84b" }} className="mb-1" />
-                <p className="text-lg font-semibold leading-none" style={{ color: "#f5f0e8" }}>{avgAssessment ? `${avgAssessment}%` : "—"}</p>
-                <p className="mt-1 text-[10px]" style={{ color: "#6a6050" }}>Avg assessment</p>
-              </div>
+            )}
+            <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full" style={{ background: "#0a0908", border: "2px solid #0a0908" }}>
+              <div className="h-2.5 w-2.5 rounded-full" style={{ background: "#1d9e75" }} />
             </div>
-          ) : (
-            // Public student profile stats
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: "rgba(232,184,75,0.07)" }}>
-                  <CheckCircle2 size={13} style={{ color: "#e8b84b" }} />
-                </div>
-                <div>
-                  <p className="text-sm font-medium leading-none" style={{ color: "#f5f0e8" }}>{completedCount || 0}</p>
-                  <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>Sessions</p>
-                </div>
-              </div>
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-semibold leading-tight" style={{ color: "#f5f0e8" }}>{name}</h1>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5">
+              {profile?.department && (
+                <span className="flex items-center gap-1.5 text-xs" style={{ color: "#8a8070" }}>
+                  <BookMarked size={11} style={{ color: "#e8b84b" }} /> {profile.department}
+                </span>
+              )}
+              {profile?.location && (
+                <span className="flex items-center gap-1.5 text-xs" style={{ color: "#8a8070" }}>
+                  <MapPin size={11} style={{ color: "#e8b84b" }} /> {profile.location}
+                </span>
+              )}
+              {joinedDate && (
+                <span className="flex items-center gap-1.5 text-xs" style={{ color: "#8a8070" }}>
+                  <Calendar size={11} style={{ color: "#e8b84b" }} /> Joined {joinedDate}
+                </span>
+              )}
             </div>
-          )
-        )}
+            {profile?.bio && (
+              <p className="mt-2.5 text-[13px] leading-relaxed" style={{ color: "#6a6050", maxWidth: 480 }}>{profile.bio}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Stat pills */}
+        <div className="mt-5 grid gap-3" style={{ gridTemplateColumns: `repeat(${statItems.length}, 1fr)` }}>
+          {statItems.map((s, i) => (
+            <div key={i} className="flex flex-col items-center justify-center rounded-xl py-3 gap-1" style={{ background: "#141210", border: "1px solid #1e1c18" }}>
+              <div className="flex items-center gap-1.5">
+                {s.icon}
+                <p className="text-lg font-bold leading-none" style={{ color: s.color, fontVariantNumeric: "tabular-nums" }}>{s.val}</p>
+              </div>
+              <p className="text-[10px]" style={{ color: "#6a6050" }}>{s.label}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -1054,7 +1019,7 @@ function RequestFromProfileModal({ course, tutorId, tutorName, currentUserId, su
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─���───────────────────────────────────────────────────────────────────────────
 // Main Page
 // ───────����─��──────────────────────────────────────────────────────────────────
 
