@@ -26,10 +26,10 @@ const createSupabaseClient = () =>
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 const SKILL_SUGGESTIONS = [
-  "React", "Python", "Node.js", "Figma", "Machine Learning", "Data Structures",
-  "Flutter", "SQL", "UI/UX Design", "Java", "Kotlin", "Docker", "Git",
-  "TypeScript", "AWS", "MongoDB", "Django", "Spring Boot", "Swift", "C++",
-  "Mathematics", "Physics", "Data Analysis", "Deep Learning", "Next.js",
+  "React", "Python", "Node.js", "Data Structures",
+  "Flutter", "SQL",  "Java",  "Git",
+   "AWS", "MongoDB", "C++",
+  "Mathematics", "Physics",  "Next.js",
 ];
 
 const LEVELS = ["Beginner", "Intermediate", "Advanced"];

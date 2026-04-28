@@ -10,6 +10,14 @@ const InterFont = Inter({
   subsets: ["latin"],
 });
 
+export const metadata = {
+  title: {
+    default: "SkillBridge",
+    template: "%s | SkillBridge",
+  },
+  description: "Learn and teach skills with peers",
+};
+
 export default async function RootLayout({ children }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
