@@ -39,7 +39,13 @@ import {
   GraduationCap,
   Layers,
   ClipboardList,
+  Link,
+  PhoneOff,
+  Mic,
+  MicOff,
+  VideoOff,
 } from "lucide-react";
+import { grantChatAccess } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Supabase
@@ -785,8 +791,223 @@ function AcceptModal({ session, onClose, onConfirm }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Update Meeting URL Modal
+// ─────────────────────────────────────────────────────────────────────────────
+
+function UpdateMeetingModal({ session, onClose, onSave }) {
+  const [meetingLink, setMeetingLink] = useState(session.meeting_link || "");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave(session.id, meetingLink.trim());
+    setSaving(false);
+    onClose();
+  };
+
+  const inputCls = "w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition-colors focus:border-[rgba(232,184,75,0.4)]";
+  const inputStyle = { background: "#141210", borderColor: "#2a2520", color: "#f5f0e8" };
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-4 md:items-center"
+      style={{ background: "rgba(0,0,0,0.85)" }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        className="w-full max-w-sm rounded-2xl border overflow-hidden"
+        style={{ background: "#0a0908", borderColor: "#2a2520" }}
+        initial={{ y: 60, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 60, opacity: 0 }}
+        transition={{ type: "spring", bounce: 0.18, duration: 0.45 }}
+      >
+        <div
+          className="flex items-center justify-between border-b px-5 py-4"
+          style={{ borderColor: "#1a1814" }}
+        >
+          <div>
+            <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>Update Meeting Link</p>
+            <p className="text-xs mt-0.5" style={{ color: "#6a6050" }}>
+              Set or update the meeting URL for this session
+            </p>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-white/5">
+            <X size={14} style={{ color: "#6a6050" }} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="mb-1.5 block text-xs font-medium" style={{ color: "#8a8070" }}>
+              Meeting URL
+            </label>
+            <input
+              value={meetingLink}
+              onChange={(e) => setMeetingLink(e.target.value)}
+              placeholder="https://meet.google.com/... or Zoom/Teams link"
+              className={inputCls}
+              style={inputStyle}
+            />
+            <p className="mt-1.5 text-[11px]" style={{ color: "#4a4438" }}>
+              Or leave blank and use the built-in LiveKit call below
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={onClose}
+              className="flex-1 rounded-xl border py-2.5 text-sm"
+              style={{ borderColor: "#2a2520", color: "#6a6050" }}
+            >
+              Cancel
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={handleSave}
+              disabled={saving}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium"
+              style={{ background: saving ? "#c9a040" : "#e8b84b", color: "#0e0c0a" }}
+            >
+              {saving ? <Loader2 size={13} className="animate-spin" /> : <Link size={13} />}
+              {saving ? "Saving…" : "Save Link"}
+            </motion.button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LiveKit Room (embedded inline video call)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function LiveKitRoom({ session, userId, userName, onEnd }) {
+  const [token, setToken] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [muted, setMuted] = useState(false);
+  const [videoOff, setVideoOff] = useState(false);
+  const serverUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
+  const roomName = `session-${session.id}`;
+
+  useEffect(() => {
+    async function getToken() {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/livekit/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roomName,
+            participantName: userName || "User",
+            participantId: userId,
+          }),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        setToken(data.token);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    getToken();
+  }, [roomName, userId, userName]);
+
+  if (!serverUrl) {
+    return (
+      <div
+        className="mt-3 rounded-xl border p-4 text-center space-y-2"
+        style={{ borderColor: "#2a2520", background: "#0e0c0a" }}
+      >
+        <Video size={20} style={{ color: "#4a4438", margin: "0 auto" }} />
+        <p className="text-xs font-medium" style={{ color: "#6a6050" }}>
+          LiveKit not configured
+        </p>
+        <p className="text-[11px]" style={{ color: "#3a3428" }}>
+          Add NEXT_PUBLIC_LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET to your environment variables
+        </p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="mt-3 flex items-center justify-center gap-2 rounded-xl border py-6" style={{ borderColor: "#2a2520", background: "#0e0c0a" }}>
+        <Loader2 size={14} className="animate-spin" style={{ color: "#e8b84b" }} />
+        <span className="text-xs" style={{ color: "#6a6050" }}>Connecting to room…</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mt-3 rounded-xl border p-4 text-center" style={{ borderColor: "rgba(176,82,82,0.3)", background: "rgba(176,82,82,0.05)" }}>
+        <p className="text-xs font-medium" style={{ color: "#b05252" }}>Failed to connect: {error}</p>
+      </div>
+    );
+  }
+
+  // Render an iframe pointing to the LiveKit Meet hosted app, passing the token
+  const lkUrl = `${serverUrl.replace("wss://", "https://").replace("ws://", "http://")}`;
+  const iframeSrc = `https://meet.livekit.io/custom?liveKitUrl=${encodeURIComponent(serverUrl)}&token=${encodeURIComponent(token)}`;
+
+  return (
+    <div className="mt-3 rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(29,158,117,0.3)" }}>
+      {/* Header bar */}
+      <div
+        className="flex items-center justify-between px-3 py-2.5"
+        style={{ background: "rgba(29,158,117,0.08)", borderBottom: "1px solid rgba(29,158,117,0.15)" }}
+      >
+        <div className="flex items-center gap-2">
+          <span
+            className="h-2 w-2 rounded-full animate-pulse"
+            style={{ background: "#1d9e75" }}
+          />
+          <span className="text-xs font-medium" style={{ color: "#1d9e75" }}>
+            Live Session — Room: {roomName}
+          </span>
+        </div>
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={onEnd}
+          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium"
+          style={{ background: "rgba(176,82,82,0.15)", color: "#b05252", border: "1px solid rgba(176,82,82,0.25)" }}
+        >
+          <PhoneOff size={10} /> End Session
+        </motion.button>
+      </div>
+
+      {/* Video iframe */}
+      <iframe
+        src={iframeSrc}
+        allow="camera; microphone; fullscreen; display-capture"
+        style={{ width: "100%", height: 380, border: "none", background: "#0a0908" }}
+        title="LiveKit Video Call"
+      />
+
+      <div
+        className="flex items-center justify-center gap-3 px-3 py-2.5"
+        style={{ background: "#0a0908", borderTop: "1px solid #1a1814" }}
+      >
+        <span className="text-[11px]" style={{ color: "#4a4438" }}>
+          Controls are inside the video panel above · Click &quot;End Session&quot; to mark as complete
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Add Course Modal (for tutors, now in Sessions page)
-// ──────────────────────────────────────────────────────────────────���──────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 function AddCourseModal({ onClose, onSave }) {
   const [form, setForm] = useState({
@@ -975,13 +1196,16 @@ function fmtTime(dt) {
   return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+// A session is "live" when it's accepted and today's date matches the scheduled date
+function isSessionLive(s) {
+  if (s.status !== "accepted" || !s.scheduled_at) return false;
+  const scheduled = new Date(s.scheduled_at);
+  const now = new Date();
+  return scheduled.toDateString() === now.toDateString();
+}
+
 function canJoinSession(s) {
-  return (
-    s.status === "accepted" &&
-    s.scheduled_at &&
-    s.meeting_link &&
-    Math.abs(new Date(s.scheduled_at) - Date.now()) <= 15 * 60 * 1000
-  );
+  return isSessionLive(s) && !!s.meeting_link;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -989,6 +1213,7 @@ function canJoinSession(s) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function StudentSessionCard({ session: s, userId, onRate, index }) {
+  const router = useRouter();
   const other = s.student_id === userId ? s.tutor : s.student;
   
   const isPending = s.status === "pending";
@@ -1092,6 +1317,7 @@ function StudentSessionCard({ session: s, userId, onRate, index }) {
             </div>
             <motion.button
               whileTap={{ scale: 0.97 }}
+              onClick={() => router.push(`/chat?userId=${s.tutor_id}`)}
               className="flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-medium"
               style={{ borderColor: "#2a2520", color: "#6a6050" }}
             >
@@ -1128,8 +1354,8 @@ function StudentSessionCard({ session: s, userId, onRate, index }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function TutorIncomingCard({ session: s, onAccept, onDecline, index }) {
+  const router = useRouter();
   const [loading, setLoading] = useState(null);
-  
 
   const handle = async (action) => {
     setLoading(action);
@@ -1219,8 +1445,10 @@ function TutorIncomingCard({ session: s, onAccept, onDecline, index }) {
           </motion.button>
           <motion.button
             whileTap={{ scale: 0.97 }}
+            onClick={() => router.push(`/chat?userId=${s.student_id}`)}
             className="flex items-center justify-center rounded-xl border px-3 py-2.5"
             style={{ borderColor: "#2a2520", color: "#6a6050" }}
+            title="Message student"
           >
             <MessageSquare size={14} />
           </motion.button>
@@ -1234,12 +1462,23 @@ function TutorIncomingCard({ session: s, onAccept, onDecline, index }) {
 // Tutor Session Card (Upcoming / Completed)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function TutorSessionCard({ session: s, userId, onRate, index }) {
+function TutorSessionCard({ session: s, userId, userName, onRate, onUpdateMeeting, onEndSession, index }) {
+  const router = useRouter();
   const isUpcoming = s.status === "accepted";
   const isCompleted = s.status === "completed";
+  const live = isSessionLive(s);
   const jn = canJoinSession(s);
   const timeStr = fmtTime(s.scheduled_at);
   const courseTitle = s.course?.title || s.course?.skill_name || "Session";
+  const [showLiveKit, setShowLiveKit] = useState(false);
+
+  const handleChat = async () => {
+    const supabase = createSupabaseClient();
+    // Grant chat access for both parties
+    await grantChatAccess(supabase, userId, s.student_id);
+    await grantChatAccess(supabase, s.student_id, userId);
+    router.push(`/chat?userId=${s.student_id}`);
+  };
 
   return (
     <motion.div
@@ -1249,9 +1488,17 @@ function TutorSessionCard({ session: s, userId, onRate, index }) {
       custom={index}
       layout
       className="rounded-2xl border overflow-hidden"
-      style={{ background: "#0a0908", borderColor: isUpcoming ? "rgba(29,158,117,0.28)" : "#2a2520" }}
+      style={{
+        background: "#0a0908",
+        borderColor: live
+          ? "rgba(29,158,117,0.4)"
+          : isUpcoming
+          ? "rgba(29,158,117,0.18)"
+          : "#2a2520",
+      }}
     >
-      {isUpcoming && <div style={{ height: 2, background: "rgba(29,158,117,0.5)" }} />}
+      {live && <div style={{ height: 2, background: "#1d9e75" }} />}
+      {isUpcoming && !live && <div style={{ height: 2, background: "rgba(29,158,117,0.35)" }} />}
 
       <div className="p-4">
         <div className="flex items-start gap-3">
@@ -1266,11 +1513,28 @@ function TutorSessionCard({ session: s, userId, onRate, index }) {
                   with {s.student?.name || "Student"}
                 </p>
               </div>
-              <StatusBadge status={s.status} />
+              <div className="flex items-center gap-1.5">
+                {live && (
+                  <span
+                    className="flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-semibold"
+                    style={{ background: "rgba(29,158,117,0.12)", borderColor: "rgba(29,158,117,0.3)", color: "#1d9e75" }}
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#1d9e75] animate-pulse" />
+                    Live
+                  </span>
+                )}
+                <StatusBadge status={s.status} />
+              </div>
             </div>
             {timeStr && (
               <p className="mt-1.5 flex items-center gap-1.5 text-xs" style={{ color: "#6a6050" }}>
                 <Calendar size={10} /> {timeStr}
+              </p>
+            )}
+            {s.meeting_link && (
+              <p className="mt-1 flex items-center gap-1.5 text-[11px]" style={{ color: "#4a4438" }}>
+                <Link size={9} />
+                <span className="truncate">{s.meeting_link}</span>
               </p>
             )}
             {isCompleted && s.duration_minutes && (
@@ -1281,36 +1545,107 @@ function TutorSessionCard({ session: s, userId, onRate, index }) {
           </div>
         </div>
 
-        {/* Live join */}
-        {jn && (
-          <motion.a
-            href={s.meeting_link}
-            target="_blank"
-            rel="noreferrer"
-            whileTap={{ scale: 0.97 }}
-            className="mt-3 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold"
-            style={{ background: "#1d9e75", color: "#f5f0e8" }}
-          >
-            <Video size={14} /> Start Live Session
-          </motion.a>
-        )}
-
-        {/* Upcoming actions */}
-        {isUpcoming && !jn && (
-          <div className="mt-3 flex gap-2">
-            <div
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-medium"
-              style={{ background: "rgba(29,158,117,0.06)", borderColor: "rgba(29,158,117,0.18)", color: "#1d9e75" }}
-            >
-              <Calendar size={12} /> Session scheduled
+        {/* Upcoming (not yet today) */}
+        {isUpcoming && !live && (
+          <div className="mt-3 space-y-2">
+            <div className="flex gap-2">
+              <div
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-medium"
+                style={{ background: "rgba(29,158,117,0.06)", borderColor: "rgba(29,158,117,0.18)", color: "#1d9e75" }}
+              >
+                <Calendar size={12} /> Session scheduled
+              </div>
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={handleChat}
+                className="flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-medium"
+                style={{ borderColor: "#2a2520", color: "#6a6050" }}
+                title="Message student"
+              >
+                <MessageSquare size={12} />
+              </motion.button>
             </div>
             <motion.button
               whileTap={{ scale: 0.97 }}
-              className="flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-medium"
-              style={{ borderColor: "#2a2520", color: "#6a6050" }}
+              onClick={() => onUpdateMeeting(s)}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-medium"
+              style={{ borderColor: "rgba(232,184,75,0.2)", color: "#e8b84b", background: "rgba(232,184,75,0.05)" }}
             >
-              <MessageSquare size={12} />
+              <Link size={11} />
+              {s.meeting_link ? "Update Meeting Link" : "Add Meeting Link"}
             </motion.button>
+          </div>
+        )}
+
+        {/* Live — today */}
+        {live && (
+          <div className="mt-3 space-y-2">
+            {/* Action row */}
+            <div className="flex gap-2">
+              {/* External meeting link or start LiveKit */}
+              {s.meeting_link ? (
+                <motion.a
+                  href={s.meeting_link}
+                  target="_blank"
+                  rel="noreferrer"
+                  whileTap={{ scale: 0.97 }}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold"
+                  style={{ background: "#1d9e75", color: "#f5f0e8" }}
+                >
+                  <Video size={14} /> Join Meeting
+                </motion.a>
+              ) : (
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setShowLiveKit((v) => !v)}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold"
+                  style={{ background: showLiveKit ? "#0e2d24" : "#1d9e75", color: showLiveKit ? "#1d9e75" : "#f5f0e8", border: showLiveKit ? "1px solid rgba(29,158,117,0.3)" : "none" }}
+                >
+                  <Video size={14} />
+                  {showLiveKit ? "Hide Call" : "Start LiveKit Call"}
+                </motion.button>
+              )}
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={handleChat}
+                className="flex items-center justify-center rounded-xl border px-3 py-2.5"
+                style={{ borderColor: "#2a2520", color: "#6a6050" }}
+                title="Message student"
+              >
+                <MessageSquare size={14} />
+              </motion.button>
+            </div>
+
+            {/* Update link + end session */}
+            <div className="flex gap-2">
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => onUpdateMeeting(s)}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-medium"
+                style={{ borderColor: "rgba(232,184,75,0.2)", color: "#e8b84b", background: "rgba(232,184,75,0.05)" }}
+              >
+                <Link size={11} />
+                {s.meeting_link ? "Update Link" : "Add Meeting Link"}
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => onEndSession(s.id)}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-medium"
+                style={{ borderColor: "rgba(176,82,82,0.25)", color: "#b05252", background: "rgba(176,82,82,0.06)" }}
+              >
+                <PhoneOff size={11} /> End Session
+              </motion.button>
+            </div>
+
+            {/* Inline LiveKit room */}
+            {showLiveKit && !s.meeting_link && (
+              <LiveKitRoom
+                session={s}
+                userId={userId}
+                userName={userName}
+                onEnd={() => onEndSession(s.id)}
+              />
+            )}
           </div>
         )}
 
@@ -1320,6 +1655,7 @@ function TutorSessionCard({ session: s, userId, onRate, index }) {
             <div className="mt-3 flex gap-2">
               <motion.button
                 whileTap={{ scale: 0.97 }}
+                onClick={handleChat}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-medium"
                 style={{ borderColor: "#2a2520", color: "#6a6050" }}
               >
@@ -1556,17 +1892,20 @@ function TutorCoursesList({ courses, onAddCourse }) {
 // Tutor View
 // ─────────────────────────────────────────────────────────────────────────────
 
-function TutorView({ sessions, courses, userId, onAccept, onDecline, onRate, onAddCourse }) {
+function TutorView({ sessions, courses, userId, userName, onAccept, onDecline, onRate, onAddCourse, onUpdateMeeting, onEndSession }) {
   const [tab, setTab] = useState("incoming");
 
   const incoming = sessions.filter((s) => s.tutor_id === userId && s.status === "pending");
-  const upcoming = sessions.filter((s) => s.tutor_id === userId && s.status === "accepted");
+  const allAccepted = sessions.filter((s) => s.tutor_id === userId && s.status === "accepted");
+  // Split into live (today) and upcoming (future)
+  const liveNow = allAccepted.filter((s) => isSessionLive(s));
+  const upcoming = allAccepted.filter((s) => !isSessionLive(s));
   const completed = sessions.filter((s) => s.tutor_id === userId && s.status === "completed");
   const declined = sessions.filter((s) => s.tutor_id === userId && s.status === "rejected");
 
   const TABS = [
     { id: "incoming", label: "Incoming", count: incoming.length, icon: Inbox },
-    { id: "upcoming", label: "Confirmed", count: upcoming.length, icon: Calendar },
+    { id: "upcoming", label: "Confirmed", count: allAccepted.length, icon: Calendar },
     { id: "done", label: "Done", count: 0, icon: CheckCircle2 },
   ];
 
@@ -1595,14 +1934,44 @@ function TutorView({ sessions, courses, userId, onAccept, onDecline, onRate, onA
     }
 
     if (tab === "upcoming") {
-      return upcoming.length === 0 ? (
+      return allAccepted.length === 0 ? (
         <EmptyState icon={Calendar} title="No upcoming sessions" subtitle="Accept incoming requests to fill your schedule" />
       ) : (
         <>
-          <SectionLabel>Confirmed · {upcoming.length}</SectionLabel>
-          {upcoming.map((s, i) => (
-            <TutorSessionCard key={s.id} session={s} userId={userId} onRate={onRate} index={i} />
-          ))}
+          {liveNow.length > 0 && (
+            <>
+              <SectionLabel>Live Now · {liveNow.length}</SectionLabel>
+              {liveNow.map((s, i) => (
+                <TutorSessionCard
+                  key={s.id}
+                  session={s}
+                  userId={userId}
+                  userName={userName}
+                  onRate={onRate}
+                  onUpdateMeeting={onUpdateMeeting}
+                  onEndSession={onEndSession}
+                  index={i}
+                />
+              ))}
+            </>
+          )}
+          {upcoming.length > 0 && (
+            <>
+              <SectionLabel>Upcoming · {upcoming.length}</SectionLabel>
+              {upcoming.map((s, i) => (
+                <TutorSessionCard
+                  key={s.id}
+                  session={s}
+                  userId={userId}
+                  userName={userName}
+                  onRate={onRate}
+                  onUpdateMeeting={onUpdateMeeting}
+                  onEndSession={onEndSession}
+                  index={i + liveNow.length}
+                />
+              ))}
+            </>
+          )}
         </>
       );
     }
@@ -1616,7 +1985,16 @@ function TutorView({ sessions, courses, userId, onAccept, onDecline, onRate, onA
           <>
             <SectionLabel>Completed · {completed.length}</SectionLabel>
             {completed.map((s, i) => (
-              <TutorSessionCard key={s.id} session={s} userId={userId} onRate={onRate} index={i} />
+              <TutorSessionCard
+                key={s.id}
+                session={s}
+                userId={userId}
+                userName={userName}
+                onRate={onRate}
+                onUpdateMeeting={onUpdateMeeting}
+                onEndSession={onEndSession}
+                index={i}
+              />
             ))}
           </>
         )}
@@ -1624,7 +2002,16 @@ function TutorView({ sessions, courses, userId, onAccept, onDecline, onRate, onA
           <>
             <SectionLabel>Declined · {declined.length}</SectionLabel>
             {declined.map((s, i) => (
-              <TutorSessionCard key={s.id} session={s} userId={userId} onRate={onRate} index={i + completed.length} />
+              <TutorSessionCard
+                key={s.id}
+                session={s}
+                userId={userId}
+                userName={userName}
+                onRate={onRate}
+                onUpdateMeeting={onUpdateMeeting}
+                onEndSession={onEndSession}
+                index={i + completed.length}
+              />
             ))}
           </>
         )}
@@ -1671,6 +2058,7 @@ export default function SessionsPage() {
   const [rateModal, setRateModal] = useState(null);
   const [acceptModal, setAcceptModal] = useState(null);
   const [showAddCourse, setShowAddCourse] = useState(false);
+  const [updateMeetingModal, setUpdateMeetingModal] = useState(null);
 
   const fetchSessions = useCallback(async (uid, silent = false) => {
     if (!silent) setLoading(true);
@@ -1732,8 +2120,44 @@ export default function SessionsPage() {
     const { error } = await supabase.from("sessions").update(update).eq("id", sessionId);
     if (!error) {
       setSessions((prev) => prev.map((s) => s.id === sessionId ? { ...s, ...update } : s));
+      // Grant chat access for both parties
+      const session = sessions.find((s) => s.id === sessionId);
+      if (session) {
+        await grantChatAccess(supabase, user.id, session.student_id);
+        await grantChatAccess(supabase, session.student_id, user.id);
+      }
     }
     setAcceptModal(null);
+  };
+
+  const handleUpdateMeeting = async (sessionId, meetingLink) => {
+    const { error } = await supabase
+      .from("sessions")
+      .update({ meeting_link: meetingLink || null })
+      .eq("id", sessionId);
+    if (!error) {
+      setSessions((prev) =>
+        prev.map((s) => s.id === sessionId ? { ...s, meeting_link: meetingLink || null } : s)
+      );
+    }
+  };
+
+  const handleEndSession = async (sessionId) => {
+    const endedAt = new Date().toISOString();
+    const session = sessions.find((s) => s.id === sessionId);
+    let durationMinutes = null;
+    if (session?.scheduled_at) {
+      durationMinutes = Math.round((new Date(endedAt) - new Date(session.scheduled_at)) / 60000);
+    }
+    const update = {
+      status: "completed",
+      ended_at: endedAt,
+      ...(durationMinutes !== null && durationMinutes > 0 ? { duration_minutes: durationMinutes } : {}),
+    };
+    const { error } = await supabase.from("sessions").update(update).eq("id", sessionId);
+    if (!error) {
+      setSessions((prev) => prev.map((s) => s.id === sessionId ? { ...s, ...update } : s));
+    }
   };
 
   const handleDecline = async (sessionId) => {
@@ -1912,10 +2336,13 @@ export default function SessionsPage() {
                   sessions={sessions}
                   courses={courses}
                   userId={uid}
+                  userName={user?.user_metadata?.name || user?.email?.split("@")[0] || "Tutor"}
                   onAccept={handleAcceptRequest}
                   onDecline={handleDecline}
                   onRate={setRateModal}
                   onAddCourse={() => setShowAddCourse(true)}
+                  onUpdateMeeting={(s) => setUpdateMeetingModal(s)}
+                  onEndSession={handleEndSession}
                 />
               )}
             </motion.div>
@@ -1942,6 +2369,17 @@ export default function SessionsPage() {
             session={acceptModal}
             onClose={() => setAcceptModal(null)}
             onConfirm={handleAcceptConfirm}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Update Meeting URL Modal */}
+      <AnimatePresence>
+        {updateMeetingModal && (
+          <UpdateMeetingModal
+            session={updateMeetingModal}
+            onClose={() => setUpdateMeetingModal(null)}
+            onSave={handleUpdateMeeting}
           />
         )}
       </AnimatePresence>
