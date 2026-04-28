@@ -505,7 +505,7 @@ function StudentLearningSection({ skills, sessions, assessments = [], isOwnProfi
 
   const completedBySkill = {};
   sessions.filter((s) => s.status === "completed").forEach((s) => {
-    const sk = s.skill?.skill_name || s.skill?.name;
+    const sk = s.course?.skill_name || s.course?.title;
     if (sk) completedBySkill[sk] = (completedBySkill[sk] || 0) + 1;
   });
 
@@ -513,7 +513,7 @@ function StudentLearningSection({ skills, sessions, assessments = [], isOwnProfi
   sessions.filter((s) => s.status === "accepted" && s.scheduled_at && new Date(s.scheduled_at) > new Date())
     .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))
     .forEach((s) => {
-      const sk = s.skill?.skill_name || s.skill?.name;
+      const sk = s.course?.skill_name || s.course?.title;
       if (sk && !nextSessionBySkill[sk]) nextSessionBySkill[sk] = s;
     });
 
@@ -905,7 +905,7 @@ function RequestFromProfileModal({ course, tutorId, tutorName, currentUserId, su
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Page
-// ───────��─────────────────────────────────────────────────────────────────────
+// ───────��──��──────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
   const supabase = createSupabaseClient();
@@ -963,7 +963,7 @@ export default function ProfilePage() {
         supabase.from("user_skills").select("*, skill:skill_id(*)").eq("user_id", uid),
         supabase.from("courses").select("*").eq("tutor_id", uid).order("created_at", { ascending: false }),
         supabase.from("sessions")
-          .select("*, student:student_id(name,avatar_url), tutor:tutor_id(name,avatar_url), skill:skill_id(skill_name,name)")
+          .select("*, student:student_id(name,avatar_url), tutor:tutor_id(name,avatar_url)")
           .or(`student_id.eq.${uid},tutor_id.eq.${uid}`)
           .order("created_at", { ascending: false })
           .limit(30),

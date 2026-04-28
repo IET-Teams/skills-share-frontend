@@ -475,7 +475,7 @@ function RateModal({ session, raterId, onClose, onDone }) {
               Rate this session
             </p>
             <p className="text-xs mt-0.5" style={{ color: "#6a6050" }}>
-              {session.course?.title || session.skill?.skill_name || "Session"}
+              {session.course?.title || session.course?.skill_name || "Session"}
             </p>
           </div>
           <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-white/5">
@@ -905,7 +905,7 @@ function StudentSessionCard({ session: s, userId, onRate, index }) {
   const isCompleted = s.status === "completed";
   const jn = canJoinSession(s);
   const timeStr = fmtTime(s.scheduled_at);
-  const courseTitle = s.course?.title || s.skill?.skill_name || "Session";
+  const courseTitle = s.course?.title || s.course?.skill_name || "Session";
 
   return (
     <motion.div
@@ -915,14 +915,7 @@ function StudentSessionCard({ session: s, userId, onRate, index }) {
       custom={index}
       layout
       className="rounded-2xl border overflow-hidden"
-      style={{
-        background: "#0a0908",
-        borderColor: isUpcoming
-          ? "rgba(29,158,117,0.28)"
-          : s.status === "pending"
-            ? "rgba(232,184,75,0.18)"
-            : "#2a2520",
-      }}
+      style={{ background: "#0a0908", borderColor: "#2a2520" }}
     >
       {isUpcoming && <div style={{ height: 2, background: "rgba(29,158,117,0.5)" }} />}
 
@@ -1036,7 +1029,7 @@ function TutorIncomingCard({ session: s, onAccept, onDecline, index }) {
   };
 
   const timeStr = fmtTime(s.scheduled_at);
-  const courseTitle = s.course?.title || s.skill?.skill_name || "a skill";
+  const courseTitle = s.course?.title || s.course?.skill_name || "a skill";
 
   return (
     <motion.div
@@ -1133,7 +1126,7 @@ function TutorSessionCard({ session: s, userId, onRate, index }) {
   const isCompleted = s.status === "completed";
   const jn = canJoinSession(s);
   const timeStr = fmtTime(s.scheduled_at);
-  const courseTitle = s.course?.title || s.skill?.skill_name || "Session";
+  const courseTitle = s.course?.title || s.course?.skill_name || "Session";
 
   return (
     <motion.div
@@ -1359,7 +1352,7 @@ function StudentView({ sessions, userId, onRate }) {
   );
 }
 
-// ────────────────────────────────────────────��─────────────────��──────────────
+// ────────────────────────────────────────────����─────────────────��──────────────
 // Tutor Courses List (inside Sessions page)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1563,7 +1556,7 @@ export default function SessionsPage() {
 
     const { data } = await supabase
       .from("sessions")
-      .select(`*, student:student_id(name,avatar_url), tutor:tutor_id(name,avatar_url), skill:skill_id(skill_name,name), course:course_id(title,skill_name,level)`)
+      .select(`*, student:student_id(name,avatar_url), tutor:tutor_id(name,avatar_url), course:course_id(title,skill_name,level)`)
       .or(`student_id.eq.${uid},tutor_id.eq.${uid}`)
       .order("created_at", { ascending: false });
 
@@ -1746,7 +1739,7 @@ export default function SessionsPage() {
                   </div>
                   <div>
                     <p className="text-xs font-semibold" style={{ color: "#f5f0e8" }}>
-                      {nextSession.course?.title || nextSession.skill?.skill_name || "Session"} · {other?.name}
+                      {nextSession.course?.title || nextSession.course?.skill_name || "Session"} · {other?.name}
                     </p>
                     <p className="text-[11px] mt-0.5" style={{ color: "#1d9e75" }}>
                       {fmtTime(nextSession.scheduled_at)}

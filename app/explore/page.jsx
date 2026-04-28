@@ -23,6 +23,7 @@ import {
   BookOpen,
   Send,
   CheckCircle2,
+  Layers,
 } from "lucide-react";
 import { useRole } from "@/context/RoleContext";
 
@@ -200,18 +201,9 @@ function RequestCourseModal({ tutor, course, currentUserId, supabase, onClose, o
       preferred_time: new Date(preferredTime).toISOString(),
     };
 
-    // attach course_id and skill_id if available
+    // attach course_id if available (sessions table has no skill_id column)
     if (course?.id && !course.id.startsWith("mock")) {
       payload.course_id = course.id;
-    }
-    if (course?.skill_name) {
-      // try to resolve skill_id from skills table
-      const { data: skillRow } = await supabase
-        .from("skills")
-        .select("id")
-        .ilike("name", course.skill_name)
-        .maybeSingle();
-      if (skillRow) payload.skill_id = skillRow.id;
     }
 
     const { error } = await supabase.from("sessions").insert(payload);
@@ -342,11 +334,93 @@ function RequestCourseModal({ tutor, course, currentUserId, supabase, onClose, o
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Courses Modal
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CoursesModal({ tutor, onClose, onRequestCourse }) {
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-4 md:items-center"
+      style={{ background: "rgba(0,0,0,0.85)" }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        className="w-full max-w-md rounded-2xl border overflow-hidden flex flex-col"
+        style={{ background: "#0a0908", borderColor: "#2a2520", maxHeight: "80vh" }}
+        initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
+        transition={{ type: "spring", bounce: 0.18, duration: 0.45 }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b px-5 py-4 shrink-0" style={{ borderColor: "#1a1814" }}>
+          <div>
+            <p className="text-sm font-semibold" style={{ color: "#f5f0e8" }}>Courses by {tutor.name}</p>
+            <p className="text-xs mt-0.5" style={{ color: "#6a6050" }}>{tutor.courses?.length || 0} available</p>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-white/5 transition-colors">
+            <X size={14} style={{ color: "#6a6050" }} />
+          </button>
+        </div>
+
+        {/* Courses list */}
+        <div className="overflow-y-auto p-4 space-y-3">
+          {(tutor.courses || []).map((course) => (
+            <div
+              key={course.id}
+              className="rounded-xl border p-3.5"
+              style={{ borderColor: "#2a2520", background: "#141210" }}
+            >
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium leading-snug" style={{ color: "#f5f0e8" }}>
+                    {course.title || course.skill_name}
+                  </p>
+                  {course.skill_name && course.title && (
+                    <p className="text-[11px] mt-0.5" style={{ color: "#6a6050" }}>{course.skill_name}</p>
+                  )}
+                </div>
+                {course.level && (
+                  <span
+                    className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-semibold mt-0.5"
+                    style={{
+                      background: course.level === "Advanced" ? "rgba(192,132,252,0.1)" : course.level === "Intermediate" ? "rgba(232,184,75,0.1)" : "rgba(29,158,117,0.1)",
+                      color: course.level === "Advanced" ? "#c084fc" : course.level === "Intermediate" ? "#e8b84b" : "#1d9e75",
+                    }}
+                  >
+                    {course.level}
+                  </span>
+                )}
+              </div>
+              {course.short_description && (
+                <p className="text-xs leading-relaxed mb-3" style={{ color: "#6a6050" }}>
+                  {course.short_description}
+                </p>
+              )}
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => { onClose(); onRequestCourse(tutor, course); }}
+                className="w-full rounded-xl py-2 text-xs font-medium transition-colors"
+                style={{
+                  background: "rgba(232,184,75,0.08)",
+                  border: "1px solid rgba(232,184,75,0.2)",
+                  color: "#e8b84b",
+                }}
+              >
+                Request this Course
+              </motion.button>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Tutor Card
 // ─────────────────────────────────────────────────────────────────────────────
 
-function TutorCard({ tutor, onOpenReviews, onRequestCourse }) {
-  const [expandedCourse, setExpandedCourse] = useState(null);
+function TutorCard({ tutor, onOpenReviews, onRequestCourse, onOpenCourses }) {
   const topCourse = tutor.courses?.[0];
 
   return (
@@ -383,56 +457,24 @@ function TutorCard({ tutor, onOpenReviews, onRequestCourse }) {
         </p>
       )}
 
-      {/* Courses list */}
+      {/* Courses button */}
       {tutor.courses?.length > 0 && (
-        <div className="mt-3 space-y-2">
-          <p className="text-[10px] uppercase tracking-widest" style={{ color: "#4a4438" }}>
-            Courses ({tutor.courses.length})
-          </p>
-          {tutor.courses.slice(0, 3).map((course) => (
-            <div
-              key={course.id}
-              className="rounded-xl border p-2.5"
-              style={{ borderColor: "#2a2520", background: "#0e0c0a" }}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium truncate" style={{ color: "#f5f0e8" }}>
-                    {course.title || course.skill_name}
-                  </p>
-                  {course.short_description && (
-                    <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed" style={{ color: "#6a6050" }}>
-                      {course.short_description}
-                    </p>
-                  )}
-                </div>
-                {course.level && (
-                  <span
-                    className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
-                    style={{
-                      background: course.level === "Advanced" ? "rgba(192,132,252,0.1)" : course.level === "Intermediate" ? "rgba(232,184,75,0.1)" : "rgba(29,158,117,0.1)",
-                      color: course.level === "Advanced" ? "#c084fc" : course.level === "Intermediate" ? "#e8b84b" : "#1d9e75",
-                    }}
-                  >
-                    {course.level}
-                  </span>
-                )}
-              </div>
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={() => onRequestCourse(tutor, course)}
-                className="mt-2 w-full rounded-lg py-1.5 text-xs font-medium"
-                style={{
-                  background: "rgba(232,184,75,0.08)",
-                  border: "1px solid rgba(232,184,75,0.18)",
-                  color: "#e8b84b",
-                }}
-              >
-                Request this Course
-              </motion.button>
-            </div>
-          ))}
-        </div>
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => onOpenCourses(tutor)}
+          className="mt-3 w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-medium transition-colors"
+          style={{
+            background: "rgba(232,184,75,0.06)",
+            border: "1px solid rgba(232,184,75,0.15)",
+            color: "#e8b84b",
+          }}
+        >
+          <span className="flex items-center gap-1.5">
+            <Layers size={12} />
+            View {tutor.courses.length} Course{tutor.courses.length !== 1 ? "s" : ""}
+          </span>
+          <ChevronRight size={12} style={{ color: "#6a6050" }} />
+        </motion.button>
       )}
 
       {/* Skills tags */}
@@ -502,6 +544,7 @@ export default function ExplorePage() {
   const [tutors, setTutors] = useState([]);
   const [reviewsTutor, setReviewsTutor] = useState(null);
   const [requestModal, setRequestModal] = useState(null); // { tutor, course }
+  const [coursesModal, setCoursesModal] = useState(null); // tutor
 
   const loadData = useCallback(async (uid) => {
     setLoading(true);
@@ -748,6 +791,7 @@ export default function ExplorePage() {
                     tutor={tutor}
                     onOpenReviews={setReviewsTutor}
                     onRequestCourse={(t, c) => setRequestModal({ tutor: t, course: c })}
+                    onOpenCourses={setCoursesModal}
                   />
                 ))}
               </motion.div>
@@ -821,6 +865,17 @@ export default function ExplorePage() {
       {/* Reviews modal */}
       <AnimatePresence>
         {reviewsTutor && <ReviewsModal tutor={reviewsTutor} onClose={() => setReviewsTutor(null)} />}
+      </AnimatePresence>
+
+      {/* Courses modal */}
+      <AnimatePresence>
+        {coursesModal && (
+          <CoursesModal
+            tutor={coursesModal}
+            onClose={() => setCoursesModal(null)}
+            onRequestCourse={(t, c) => setRequestModal({ tutor: t, course: c })}
+          />
+        )}
       </AnimatePresence>
 
       {/* Request Course modal */}
