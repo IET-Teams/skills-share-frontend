@@ -620,7 +620,7 @@ function AcceptModal({ session, onClose, onConfirm }) {
               Accept & Schedule
             </p>
             <p className="text-xs mt-0.5" style={{ color: "#6a6050" }}>
-              Propose a time slot for {session.requester?.name || "the student"}
+              Propose a time slot for {session.student?.name || "the student"}
             </p>
           </div>
           <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-white/5">
@@ -1359,7 +1359,7 @@ function StudentView({ sessions, userId, onRate }) {
   );
 }
 
-// ──────────────────────────────────────────────────────────────��──────────────
+// ────────────────────────────────────────────��─────────────────��──────────────
 // Tutor Courses List (inside Sessions page)
 // ─────────────────────────────────────────────────────────────────────────────
 

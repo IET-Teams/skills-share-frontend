@@ -401,8 +401,8 @@ function SkillProgressCard({ skill, sessCount, assessments, nextSession, index }
   const skillAssessments = (assessments || []).filter((a) => a.skill_name?.toLowerCase() === skill.skill_name?.toLowerCase());
   const latestScore = skillAssessments.length > 0 ? skillAssessments[skillAssessments.length - 1].score : null;
   const hasNoAssessment = skillAssessments.length === 0;
-  const nextDateStr = nextSession?.scheduled_time
-    ? new Date(nextSession.scheduled_time).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  const nextDateStr = nextSession?.scheduled_at
+    ? new Date(nextSession.scheduled_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
     : null;
 
   return (
@@ -510,8 +510,8 @@ function StudentLearningSection({ skills, sessions, assessments = [], isOwnProfi
   });
 
   const nextSessionBySkill = {};
-  sessions.filter((s) => s.status === "accepted" && s.scheduled_time && new Date(s.scheduled_time) > new Date())
-    .sort((a, b) => new Date(a.scheduled_time) - new Date(b.scheduled_time))
+  sessions.filter((s) => s.status === "accepted" && s.scheduled_at && new Date(s.scheduled_at) > new Date())
+    .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))
     .forEach((s) => {
       const sk = s.skill?.skill_name || s.skill?.name;
       if (sk && !nextSessionBySkill[sk]) nextSessionBySkill[sk] = s;
@@ -905,7 +905,7 @@ function RequestFromProfileModal({ course, tutorId, tutorName, currentUserId, su
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Page
-// ─────────────────────────────────────────────────────────────────────────────
+// ───────��─────────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
   const supabase = createSupabaseClient();
