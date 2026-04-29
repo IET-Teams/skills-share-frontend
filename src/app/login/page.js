@@ -6,7 +6,7 @@ import { EyeIcon, EyedropperIcon } from "@phosphor-icons/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
-import { signInWithGoogle } from "@/app/action";
+import { signInWithEmail, signInWithGoogle } from "@/app/action";
 
 const features = [
   "Teach skills you know to earn campus reputation",
@@ -68,9 +68,18 @@ export default function LoginPage() {
     });
     if (error) {
       setError(error.message);
-    } else {
-      router.push("/dashboard");
+      setLoading(false);
+      return;
     }
+    // 🔥 IMPORTANT: force session refresh
+    await supabase.auth.getSession();
+
+    // Small delay helps cookie propagation (optional but useful)
+    setTimeout(() => {
+      router.replace("/dashboard");
+      router.refresh(); // 🔥 important for SSR
+    }, 100);
+
     setLoading(false);
   };
 
@@ -246,12 +255,14 @@ export default function LoginPage() {
                 <Divider />
 
                 <form
-                  onSubmit={handleEmailLogin}
+                  // onSubmit={handleEmailLogin}
+                  action={signInWithEmail}
                   className="flex flex-col gap-4"
                 >
                   <FormField
                     label="Email address"
                     type="email"
+                    name="email"
                     placeholder="you@college.edu"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
@@ -259,6 +270,7 @@ export default function LoginPage() {
                   <div>
                     <FormField
                       label="Password"
+                      name="password"
                       type={showPass ? "text" : "password"}
                       placeholder="••••••••"
                       value={loginPassword}
@@ -448,13 +460,22 @@ function Divider() {
   );
 }
 
-function FormField({ label, type, placeholder, value, onChange, suffix }) {
+function FormField({
+  label,
+  type,
+  placeholder,
+  value,
+  onChange,
+  suffix,
+  name,
+}) {
   return (
     <div>
       <label className="block text-xs text-[#8a8070] mb-1.5">{label}</label>
       <div className="relative">
         <input
           type={type}
+          name={name}
           placeholder={placeholder}
           value={value}
           onChange={onChange}
