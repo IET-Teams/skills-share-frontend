@@ -41,6 +41,8 @@ export default function LoginPage() {
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
+  const [signupPhone, setSignupPhone] = useState("");
+  const [signupDOB, setSignupDOB] = useState("");
 
   const [error, setError] = useState("");
 
@@ -52,8 +54,6 @@ export default function LoginPage() {
 
   const [resetPasswordActionState, resetPasswordAction] =
     useActionState(forgotPassword);
-
-  console.log(resetPasswordActionState, "state of reset");
 
   // ── Google OAuth ──
   const handleGoogleLogin = async () => {
@@ -100,7 +100,9 @@ export default function LoginPage() {
     const { data, error } = await supabase.auth.signUp({
       email: signupEmail,
       password: signupPassword,
-      options: { data: { full_name: signupName } },
+      options: {
+        data: { full_name: signupName, dob: signupDOB, phone: signupPhone },
+      },
     });
     if (error) {
       setError(error.message);
@@ -438,6 +440,20 @@ export default function LoginPage() {
                         )}
                       </button>
                     }
+                  />
+                  <FormField
+                    label="Phone No."
+                    type="text"
+                    placeholder="Your Phone no."
+                    value={signupPhone}
+                    onChange={(e) => setSignupPhone(e.target.value)}
+                  />
+                  <FormField
+                    label="DOB"
+                    type="date"
+                    placeholder="Your DOB"
+                    value={signupDOB}
+                    onChange={(e) => setSignupDOB(e.target.value)}
                   />
 
                   <SubmitButton loading={loading} label="Create account" />

@@ -182,18 +182,28 @@ function ProfileHero({ profile, user, role, completedCount, avgRating, totalSess
   const displayRole = isOwnProfile ? role : viewedRole;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border p-5 md:p-6" style={{ background: "#0a0908", borderColor: "#2a2520" }}>
+    <div
+      className="relative overflow-hidden rounded-2xl border p-5 md:p-6"
+      style={{ background: "#0a0908", borderColor: "#2a2520" }}
+    >
       <div className="absolute top-4 right-4 flex items-center gap-2">
         <div
           className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold tracking-wide"
           style={{
-            background: displayRole === "student" ? "rgba(232,184,75,0.1)" : "rgba(29,158,117,0.1)",
+            background:
+              displayRole === "student"
+                ? "rgba(232,184,75,0.1)"
+                : "rgba(29,158,117,0.1)",
             border: `1px solid ${displayRole === "student" ? "rgba(232,184,75,0.25)" : "rgba(29,158,117,0.25)"}`,
             color: displayRole === "student" ? "#e8b84b" : "#1d9e75",
             letterSpacing: "0.08em",
           }}
         >
-          {displayRole === "student" ? <GraduationCap size={11} /> : <BookOpen size={11} />}
+          {displayRole === "student" ? (
+            <GraduationCap size={11} />
+          ) : (
+            <BookOpen size={11} />
+          )}
           {displayRole === "student" ? "STUDENT" : "TUTOR"}
         </div>
         {isOwnProfile && (
@@ -212,40 +222,96 @@ function ProfileHero({ profile, user, role, completedCount, avgRating, totalSess
         <div className="flex items-start gap-4 pr-20">
           <div className="relative shrink-0">
             {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt={name} className="h-20 w-20 rounded-2xl object-cover" style={{ border: "2px solid #2a2520" }} />
+              <img
+                src={profile.avatar_url}
+                alt={name}
+                className="h-20 w-20 rounded-2xl object-cover"
+                style={{ border: "2px solid #2a2520" }}
+              />
             ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-2xl text-2xl font-medium"
-                style={{ background: "#141210", border: "1px solid #2a2520", color: "#e8b84b" }}
+              <div
+                className="flex h-20 w-20 items-center justify-center rounded-2xl text-2xl font-medium"
+                style={{
+                  background: "#141210",
+                  border: "1px solid #2a2520",
+                  color: "#e8b84b",
+                }}
               >
-                {name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)}
+                {name
+                  .split(" ")
+                  .map((w) => w[0])
+                  .join("")
+                  .toUpperCase()
+                  .slice(0, 2)}
               </div>
             )}
-            <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 flex items-center justify-center" style={{ background: "#0a0908", borderColor: "#0a0908" }}>
-              <div className="h-2 w-2 rounded-full" style={{ background: "#1d9e75" }} />
+            <div
+              className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 flex items-center justify-center"
+              style={{ background: "#0a0908", borderColor: "#0a0908" }}
+            >
+              <div
+                className="h-2 w-2 rounded-full"
+                style={{ background: "#1d9e75" }}
+              />
             </div>
           </div>
 
           <div className="flex-1 min-w-0 pt-1">
-            <h1 className="text-xl font-medium leading-tight" style={{ color: "#f5f0e8" }}>{name}</h1>
+            <h1
+              className="text-xl font-medium leading-tight"
+              style={{ color: "#f5f0e8" }}
+            >
+              {name}
+            </h1>
             <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
               {profile?.department && (
-                <span className="flex items-center gap-1 text-xs" style={{ color: "#8a8070" }}>
+                <span
+                  className="flex items-center gap-1 text-xs"
+                  style={{ color: "#8a8070" }}
+                >
                   <BookMarked size={10} /> {profile.department}
                 </span>
               )}
               {profile?.location && (
-                <span className="flex items-center gap-1 text-xs" style={{ color: "#8a8070" }}>
+                <span
+                  className="flex items-center gap-1 text-xs"
+                  style={{ color: "#8a8070" }}
+                >
                   <MapPin size={10} /> {profile.location}
                 </span>
               )}
               {joinedDate && (
-                <span className="flex items-center gap-1 text-xs" style={{ color: "#8a8070" }}>
+                <span
+                  className="flex items-center gap-1 text-xs"
+                  style={{ color: "#8a8070" }}
+                >
                   <Calendar size={10} /> Joined {joinedDate}
+                </span>
+              )}
+              {isOwnProfile && profile?.dob && (
+                <span
+                  className="flex items-center gap-1 text-xs"
+                  style={{ color: "#8a8070" }}
+                >
+                  DOB {profile?.dob}
+                </span>
+              )}
+              {isOwnProfile && profile?.phone && (
+                <span
+                  className="flex items-center gap-1 text-xs"
+                  style={{ color: "#8a8070" }}
+                >
+                  Phone {profile?.phone}
                 </span>
               )}
             </div>
             {profile?.bio && (
-              <p className="mt-2.5 text-xs leading-relaxed" style={{ color: "#6a6050" }}>{profile.bio}</p>
+              <p
+                className="mt-2.5 text-xs leading-relaxed"
+                style={{ color: "#6a6050" }}
+              >
+                {profile.bio}
+              </p>
             )}
           </div>
         </div>
@@ -256,30 +322,60 @@ function ProfileHero({ profile, user, role, completedCount, avgRating, totalSess
         {displayRole === "tutor" ? (
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: "rgba(232,184,75,0.07)" }}>
+              <div
+                className="flex h-7 w-7 items-center justify-center rounded-lg"
+                style={{ background: "rgba(232,184,75,0.07)" }}
+              >
                 <CheckCircle2 size={13} style={{ color: "#e8b84b" }} />
               </div>
               <div>
-                <p className="text-sm font-medium leading-none" style={{ color: "#f5f0e8" }}>{completedCount || 0}</p>
-                <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>Sessions</p>
+                <p
+                  className="text-sm font-medium leading-none"
+                  style={{ color: "#f5f0e8" }}
+                >
+                  {completedCount || 0}
+                </p>
+                <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>
+                  Sessions
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: "rgba(232,184,75,0.07)" }}>
+              <div
+                className="flex h-7 w-7 items-center justify-center rounded-lg"
+                style={{ background: "rgba(232,184,75,0.07)" }}
+              >
                 <Star size={13} style={{ color: "#e8b84b" }} />
               </div>
               <div>
-                <p className="text-sm font-medium leading-none" style={{ color: "#f5f0e8" }}>{avgRating || "—"}</p>
-                <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>Rating</p>
+                <p
+                  className="text-sm font-medium leading-none"
+                  style={{ color: "#f5f0e8" }}
+                >
+                  {avgRating || "—"}
+                </p>
+                <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>
+                  Rating
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: "rgba(232,184,75,0.07)" }}>
+              <div
+                className="flex h-7 w-7 items-center justify-center rounded-lg"
+                style={{ background: "rgba(232,184,75,0.07)" }}
+              >
                 <Users size={13} style={{ color: "#e8b84b" }} />
               </div>
               <div>
-                <p className="text-sm font-medium leading-none" style={{ color: "#f5f0e8" }}>{totalSessions || 0}</p>
-                <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>Total</p>
+                <p
+                  className="text-sm font-medium leading-none"
+                  style={{ color: "#f5f0e8" }}
+                >
+                  {totalSessions || 0}
+                </p>
+                <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>
+                  Total
+                </p>
               </div>
             </div>
             {isOwnProfile && (
@@ -288,53 +384,108 @@ function ProfileHero({ profile, user, role, completedCount, avgRating, totalSess
                 onClick={onAvailabilityToggle}
                 className="ml-auto flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all"
                 style={{
-                  background: isAvailable ? "rgba(29,158,117,0.1)" : "transparent",
-                  borderColor: isAvailable ? "rgba(29,158,117,0.35)" : "#2a2520",
+                  background: isAvailable
+                    ? "rgba(29,158,117,0.1)"
+                    : "transparent",
+                  borderColor: isAvailable
+                    ? "rgba(29,158,117,0.35)"
+                    : "#2a2520",
                   color: isAvailable ? "#1d9e75" : "#6a6050",
                 }}
               >
                 {isAvailable ? (
-                  <><div className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" /> Available</>
+                  <>
+                    <div className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />{" "}
+                    Available
+                  </>
                 ) : (
-                  <><WifiOff size={9} /> Unavailable</>
+                  <>
+                    <WifiOff size={9} /> Unavailable
+                  </>
                 )}
               </motion.button>
             )}
           </div>
+        ) : // Student stats — only shown on own profile
+        isOwnProfile ? (
+          <div
+            className="grid grid-cols-3 gap-0 rounded-xl overflow-hidden"
+            style={{ background: "#141210", border: "1px solid #1e1c18" }}
+          >
+            <div className="flex flex-col items-center justify-center py-3">
+              <CheckCircle2
+                size={12}
+                style={{ color: "#1d9e75" }}
+                className="mb-1"
+              />
+              <p
+                className="text-lg font-semibold leading-none"
+                style={{ color: "#f5f0e8" }}
+              >
+                {completedCount || 0}
+              </p>
+              <p className="mt-1 text-[10px]" style={{ color: "#6a6050" }}>
+                Sessions done
+              </p>
+            </div>
+            <div
+              className="flex flex-col items-center justify-center py-3"
+              style={{
+                borderLeft: "1px solid #1e1c18",
+                borderRight: "1px solid #1e1c18",
+              }}
+            >
+              <Flame size={12} style={{ color: "#fb923c" }} className="mb-1" />
+              <p
+                className="text-lg font-semibold leading-none"
+                style={{ color: "#fb923c" }}
+              >
+                {dayStreak || 0}
+              </p>
+              <p className="mt-1 text-[10px]" style={{ color: "#6a6050" }}>
+                Day streak
+              </p>
+            </div>
+            <div className="flex flex-col items-center justify-center py-3">
+              <TrendingUp
+                size={12}
+                style={{ color: "#e8b84b" }}
+                className="mb-1"
+              />
+              <p
+                className="text-lg font-semibold leading-none"
+                style={{ color: "#f5f0e8" }}
+              >
+                {avgAssessment ? `${avgAssessment}%` : "—"}
+              </p>
+              <p className="mt-1 text-[10px]" style={{ color: "#6a6050" }}>
+                Avg assessment
+              </p>
+            </div>
+          </div>
         ) : (
-          // Student stats — only shown on own profile
-          isOwnProfile ? (
-            <div className="grid grid-cols-3 gap-0 rounded-xl overflow-hidden" style={{ background: "#141210", border: "1px solid #1e1c18" }}>
-              <div className="flex flex-col items-center justify-center py-3">
-                <CheckCircle2 size={12} style={{ color: "#1d9e75" }} className="mb-1" />
-                <p className="text-lg font-semibold leading-none" style={{ color: "#f5f0e8" }}>{completedCount || 0}</p>
-                <p className="mt-1 text-[10px]" style={{ color: "#6a6050" }}>Sessions done</p>
+          // Public student profile stats
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <div
+                className="flex h-7 w-7 items-center justify-center rounded-lg"
+                style={{ background: "rgba(232,184,75,0.07)" }}
+              >
+                <CheckCircle2 size={13} style={{ color: "#e8b84b" }} />
               </div>
-              <div className="flex flex-col items-center justify-center py-3" style={{ borderLeft: "1px solid #1e1c18", borderRight: "1px solid #1e1c18" }}>
-                <Flame size={12} style={{ color: "#fb923c" }} className="mb-1" />
-                <p className="text-lg font-semibold leading-none" style={{ color: "#fb923c" }}>{dayStreak || 0}</p>
-                <p className="mt-1 text-[10px]" style={{ color: "#6a6050" }}>Day streak</p>
-              </div>
-              <div className="flex flex-col items-center justify-center py-3">
-                <TrendingUp size={12} style={{ color: "#e8b84b" }} className="mb-1" />
-                <p className="text-lg font-semibold leading-none" style={{ color: "#f5f0e8" }}>{avgAssessment ? `${avgAssessment}%` : "—"}</p>
-                <p className="mt-1 text-[10px]" style={{ color: "#6a6050" }}>Avg assessment</p>
-              </div>
-            </div>
-          ) : (
-            // Public student profile stats
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: "rgba(232,184,75,0.07)" }}>
-                  <CheckCircle2 size={13} style={{ color: "#e8b84b" }} />
-                </div>
-                <div>
-                  <p className="text-sm font-medium leading-none" style={{ color: "#f5f0e8" }}>{completedCount || 0}</p>
-                  <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>Sessions</p>
-                </div>
+              <div>
+                <p
+                  className="text-sm font-medium leading-none"
+                  style={{ color: "#f5f0e8" }}
+                >
+                  {completedCount || 0}
+                </p>
+                <p className="text-[10px] mt-0.5" style={{ color: "#6a6050" }}>
+                  Sessions
+                </p>
               </div>
             </div>
-          )
+          </div>
         )}
       </div>
     </div>
@@ -1122,7 +1273,6 @@ export default function ProfilePage() {
         supabase.from("assessments").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
       ]);
 
-      console.log(skillsData, "all skills data");
       
 
       const nextSkills = (skillsData || [])
