@@ -14,6 +14,7 @@ const RoleContext = createContext(null);
 
 export function RoleProvider({ children }) {
   const [role, setRoleState] = useState("student"); // "student" | "tutor"
+  const [isTutor, setIsTutor] = useState(false);    // is_tutor from profiles table
   const [ready, setReady] = useState(false);
 
   const supabase = useMemo(
@@ -25,13 +26,14 @@ export function RoleProvider({ children }) {
     [],
   );
 
-  // Hydrate from backend profile role first, with localStorage fallback
+  // Hydrate from backend profile; also fetch is_tutor flag
   useEffect(() => {
     let alive = true;
 
     async function bootstrapRole() {
       const saved = localStorage.getItem("sb_role");
       let nextRole = saved === "student" || saved === "tutor" ? saved : "student";
+      let tutorFlag = false;
 
       try {
         const {
@@ -41,7 +43,7 @@ export function RoleProvider({ children }) {
         if (user) {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("role")
+            .select("role, is_tutor")
             .eq("id", user.id)
             .maybeSingle();
 
@@ -49,11 +51,19 @@ export function RoleProvider({ children }) {
           if (profileRole === "student" || profileRole === "tutor") {
             nextRole = profileRole;
           }
+
+          tutorFlag = profile?.is_tutor === true;
+
+          // If is_tutor was revoked but role is still "tutor", downgrade
+          if (!tutorFlag && nextRole === "tutor") {
+            nextRole = "student";
+          }
         }
       } catch (error) {
         console.error("Role bootstrap failed:", error);
       } finally {
         if (!alive) return;
+        setIsTutor(tutorFlag);
         setRoleState(nextRole);
         localStorage.setItem("sb_role", nextRole);
         setReady(true);
@@ -67,23 +77,59 @@ export function RoleProvider({ children }) {
     };
   }, [supabase]);
 
-  const setRole = useCallback(async (r) => {
-    if (r !== "student" && r !== "tutor") return;
-    setRoleState(r);
-    localStorage.setItem("sb_role", r);
+  /**
+   * setRole — switches active role.
+   * If switching to "tutor" but is_tutor is false, returns false so the
+   * caller can open the verification modal instead.
+   */
+  const setRole = useCallback(
+    async (r) => {
+      if (r !== "student" && r !== "tutor") return true;
 
-    // Dispatch a custom event so any non-context listener can react.
-    window.dispatchEvent(new CustomEvent("sb_role_change", { detail: r }));
+      // Guard: tutor mode requires is_tutor === true
+      if (r === "tutor" && !isTutor) {
+        return false; // signal: show verification modal
+      }
 
+      setRoleState(r);
+      localStorage.setItem("sb_role", r);
+      window.dispatchEvent(new CustomEvent("sb_role_change", { detail: r }));
+
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return true;
+        await supabase.from("profiles").update({ role: r }).eq("id", user.id);
+      } catch (error) {
+        console.error("Role sync failed:", error);
+      }
+
+      return true;
+    },
+    [supabase, isTutor],
+  );
+
+  /**
+   * refreshIsTutor — called after successful verification submission so the
+   * context picks up the updated is_tutor value without a full page reload.
+   */
+  const refreshIsTutor = useCallback(async () => {
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      await supabase.from("profiles").update({ role: r }).eq("id", user.id);
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("is_tutor")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      setIsTutor(profile?.is_tutor === true);
     } catch (error) {
-      console.error("Role sync failed:", error);
+      console.error("refreshIsTutor failed:", error);
     }
   }, [supabase]);
 
@@ -91,7 +137,7 @@ export function RoleProvider({ children }) {
   if (!ready) return null;
 
   return (
-    <RoleContext.Provider value={{ role, setRole }}>
+    <RoleContext.Provider value={{ role, setRole, isTutor, refreshIsTutor }}>
       {children}
     </RoleContext.Provider>
   );
