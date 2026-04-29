@@ -12,27 +12,17 @@ import { useRouter } from "next/navigation";
 // Styles & Keyframes defined via style tag for strict adherence
 // ─────────────────────────────────────────────────────────────────────────────
 const styles = `
-  @keyframes popIn {
-    0% { opacity: 0; transform: scale(0.8); }
-    100% { opacity: 1; transform: scale(1); }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
-  @keyframes slideInUp {
-    0% { opacity: 0; transform: translateY(20px); }
-    100% { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes badgeUnlock {
-    0% { transform: scale(0); opacity: 0; }
-    50% { transform: scale(1.2); }
-    100% { transform: scale(1); opacity: 1; }
+  @keyframes slideUpSubtle {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
   @keyframes progressFill {
     0% { width: 0%; }
     100% { width: var(--progress-width); }
-  }
-  @keyframes pulseSubtle {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
   }
 
   .sp-container {
@@ -45,15 +35,16 @@ const styles = `
     --text-primary: #ffffff;
     --text-secondary: #b8b1a6;
     
-    font-family: inherit;
+    font-family: var(--font-google-sans), sans-serif;
   }
 
   .sp-section {
-    animation: slideInUp 0.6s ease-out forwards;
-    background: linear-gradient(135deg, #0e0c0a 0%, #1a1713 100%);
-    border-radius: 16px;
-    padding: 24px;
-    margin-bottom: 32px;
+    animation: slideUpSubtle 0.4s ease-out forwards;
+    background: #0a0908;
+    border: 1px solid #3a3530;
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 24px;
   }
 
   .sp-header {
@@ -72,27 +63,24 @@ const styles = `
   }
 
   .sp-badge-card {
-    width: 52px;
-    height: 52px;
-    border-radius: 14px;
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 0.2s ease;
     cursor: pointer;
     position: relative;
-    animation: popIn 0.4s ease-out forwards;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+    animation: fadeIn 0.4s ease-out forwards;
+    background: #121110;
+    border: 1px solid #3a3530;
   }
   
   .sp-badge-card:hover {
-    transform: scale(1.15) translateY(-2px);
+    transform: translateY(-2px);
     border-color: var(--gold-primary);
-    background: rgba(232, 184, 75, 0.15);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.4), 0 0 15px rgba(232, 184, 75, 0.2);
-    z-index: 10;
+    background: #252220;
   }
 
   .sp-badge-icon-container {
@@ -112,7 +100,7 @@ const styles = `
     background: rgba(232, 184, 75, 0.05);
     color: var(--gold-primary);
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 1px;
     cursor: pointer;
@@ -132,9 +120,9 @@ const styles = `
   }
 
   .sp-stat-card {
-    background: linear-gradient(135deg, #252220 0%, #1d1a17 100%);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
+    background: #121110;
+    border: 1px solid #3a3530;
+    border-radius: 8px;
     padding: 20px;
     display: flex;
     gap: 16px;
@@ -154,9 +142,9 @@ const styles = `
   }
 
   .sp-course-card {
-    background: linear-gradient(135deg, #252220 0%, #1d1a17 100%);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
+    background: #121110;
+    border: 1px solid #3a3530;
+    border-radius: 8px;
     padding: 24px;
     position: relative;
     transition: all 0.3s ease;
@@ -349,7 +337,11 @@ export default function StudentProfileComponent({ skills = [], sessions = [], as
   // Course Cards Data Generation
   const courseCards = useMemo(() => {
     return learnSkills.map(skill => {
-      const skillSessions = sessions.filter(s => s.course?.skill_name === skill.skill_name || s.course?.title === skill.skill_name);
+      const skillIden = (skill.skill_name || skill.name || "").toLowerCase();
+      const skillSessions = sessions.filter(s => 
+        s.course?.skill_name?.toLowerCase() === skillIden || 
+        s.course?.title?.toLowerCase() === skillIden
+      );
       const completedSkillSessions = skillSessions.filter(s => s.status === 'completed');
       const upcomingSkillSession = skillSessions.filter(s => s.status === 'accepted' && new Date(s.scheduled_at) > new Date())
         .sort((a,b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))[0];
@@ -367,8 +359,8 @@ export default function StudentProfileComponent({ skills = [], sessions = [], as
       }
 
       const sessionsCompleted = completedSkillSessions.length;
-      const totalSessions = Math.max(sessionsCompleted + 2, 10); // Default to 10 if new, or completed + 2
-      const progress = Math.round((sessionsCompleted / totalSessions) * 100);
+      const totalSessions = 10; // Standard milestone for progress tracking
+      const progress = Math.min(Math.round((sessionsCompleted / totalSessions) * 100), 100);
 
       return {
         id: skill.id,
@@ -394,7 +386,7 @@ export default function StudentProfileComponent({ skills = [], sessions = [], as
         <div className="sp-header">
           <div className="flex items-center gap-3">
             <Award size={24} style={{ color: "#e8b84b" }} />
-            <h2 className="text-xl font-bold" style={{ color: "#ffffff" }}>Badges & Achievements</h2>
+            <h2 className="text-xl font-medium" style={{ color: "#ffffff" }}>Badges & Achievements</h2>
           </div>
           <div className="flex items-center px-3 py-1 rounded-full" style={{ background: "rgba(232, 184, 75, 0.2)" }}>
             <span className="text-sm font-bold tracking-wide" style={{ color: "#e8b84b" }}>
@@ -422,10 +414,8 @@ export default function StudentProfileComponent({ skills = [], sessions = [], as
                     className="sp-badge-card group" 
                     onClick={() => setSelectedBadge(badge)}
                     style={{ 
-                      opacity: isUnlocked ? 1 : 0.7,
-                      borderColor: isUnlocked ? badge.color : 'rgba(255,255,255,0.1)',
-                      background: isUnlocked ? `${badge.color}25` : 'rgba(255,255,255,0.05)',
-                      boxShadow: isUnlocked ? `0 0 15px ${badge.color}30, inset 0 0 10px ${badge.color}20` : 'none'
+                      borderColor: isUnlocked ? badge.color : '#3a3530',
+                      background: isUnlocked ? `${badge.color}15` : '#121110'
                     }}
                   >
                     <div className="sp-badge-icon-container">
@@ -463,7 +453,7 @@ export default function StudentProfileComponent({ skills = [], sessions = [], as
         <div className="sp-header">
           <div className="flex items-center gap-3">
             <TrendingUp size={24} style={{ color: "#e8b84b" }} />
-            <h2 className="text-xl font-bold" style={{ color: "#ffffff" }}>Learning Progress</h2>
+            <h2 className="text-xl font-medium" style={{ color: "#ffffff" }}>Learning Progress</h2>
           </div>
         </div>
 
@@ -498,7 +488,7 @@ export default function StudentProfileComponent({ skills = [], sessions = [], as
                 <div className="flex gap-3 items-start mb-4">
                   <div className="text-3xl shrink-0">{course.icon}</div>
                   <div className="flex-1">
-                    <h3 className="text-base font-bold text-[var(--text-primary)] mb-1 truncate" title={course.name}>
+                    <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1 truncate" title={course.name}>
                       {course.name}
                     </h3>
                     <p className="text-xs text-[var(--text-secondary)]">Tutor: {course.tutor}</p>
@@ -506,7 +496,7 @@ export default function StudentProfileComponent({ skills = [], sessions = [], as
                 </div>
 
                 <div 
-                  className="inline-flex gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide mb-4"
+                  className="inline-flex gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium uppercase tracking-wide mb-4"
                   style={{ background: course.levelBg, color: course.levelColor }}
                 >
                   {course.levelBadge}
@@ -514,8 +504,8 @@ export default function StudentProfileComponent({ skills = [], sessions = [], as
 
                 <div className="my-4">
                   <div className="flex justify-between text-xs mb-2">
-                    <span className="font-semibold text-[var(--text-secondary)]">{course.name}</span>
-                    <span className="font-bold text-[var(--gold-primary)]">{course.progress}%</span>
+                    <span className="font-medium text-[var(--text-secondary)]">{course.name}</span>
+                    <span className="font-semibold text-[var(--gold-primary)]">{course.progress}%</span>
                   </div>
                   <div className="w-full h-2 rounded-full bg-[var(--border-color)] overflow-hidden">
                     <div 
@@ -538,7 +528,7 @@ export default function StudentProfileComponent({ skills = [], sessions = [], as
 
                 <div className="flex justify-between items-center p-3 rounded-lg bg-[rgba(42,37,32,0.4)]">
                   <span className="text-xs font-semibold text-[var(--text-secondary)]">Latest Assessment:</span>
-                  <span className="text-base font-bold text-[var(--gold-primary)]">
+                  <span className="text-base font-semibold text-[var(--gold-primary)]">
                     {course.latestScore !== null ? `${course.latestScore}%` : 'Pending'}
                   </span>
                 </div>

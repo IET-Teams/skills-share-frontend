@@ -1103,10 +1103,10 @@ export default function ProfilePage() {
         supabase.from("user_skills").select("*, skill:skill_id(*)").eq("user_id", uid),
         supabase.from("courses").select("*").eq("tutor_id", uid).order("created_at", { ascending: false }),
         supabase.from("sessions")
-          .select("*, student:student_id(name,avatar_url), tutor:tutor_id(name,avatar_url)")
+          .select("*, student:student_id(name,avatar_url), tutor:tutor_id(name,avatar_url), course:course_id(title, skill_name)")
           .or(`student_id.eq.${uid},tutor_id.eq.${uid}`)
           .order("created_at", { ascending: false })
-          .limit(30),
+          .limit(50),
         supabase.from("reviews").select("*, reviewer:reviewer_id(name,avatar_url)").eq("reviewee_id", uid).order("created_at", { ascending: false }),
         supabase.from("assessments").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
       ]);
