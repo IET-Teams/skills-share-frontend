@@ -485,9 +485,8 @@ function LoadingSkeleton() {
 // ── Main Dashboard Page ───────────────────────────────────────────────────────
 export default function DashboardPage() {
   const supabase = createSupabaseClient();
-  const { role, setRole } = useRole();
+  const { role, setRole, isTutor } = useRole();
 
-  const [isTutor, setIsTutor] = useState(false);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [studentData, setStudentData] = useState(null);
@@ -523,8 +522,7 @@ export default function DashboardPage() {
           .filter(us => us.type === "learn")
           .map(us => ({ ...us.skill, skill_name: us.skill?.name, type: 'learn' }));
 
-        const canSwitch = teachSkills.length > 0 || userRow?.role === "tutor";
-        setIsTutor(canSwitch);
+        // isTutor comes from RoleContext (is_tutor column in profiles)
 
         // Sessions — use actual column names from schema: student_id, tutor_id, scheduled_at
         const { data: sessions } = await supabase
@@ -820,8 +818,43 @@ export default function DashboardPage() {
                 onSuggestedTutorRequest={handleSuggestedTutorRequest}
                 requestStatus={requestStatus}
               />
-            ) : (
+            ) : isTutor ? (
               <TutorDashboard key="tutor" data={tutorData} onRequestAction={handleRequestAction} onAvailabilityToggle={handleAvailabilityToggle} />
+            ) : (
+              <motion.div key="tutor-locked" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+                style={{
+                  background: "#141210", border: "1px solid #2a2520",
+                  borderRadius: 16, padding: "40px 24px", textAlign: "center",
+                }}
+              >
+                <div style={{
+                  width: 48, height: 48, background: "rgba(232,184,75,0.08)",
+                  border: "1px solid rgba(232,184,75,0.2)", borderRadius: 14,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  margin: "0 auto 16px",
+                }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <rect x="5" y="11" width="14" height="10" rx="2" stroke="#e8b84b" strokeWidth="1.5"/>
+                    <path d="M8 11V7a4 4 0 018 0v4" stroke="#e8b84b" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                </div>
+                <div style={{ fontSize: 17, fontWeight: 600, color: "#f5f0e8", marginBottom: 8 }}>
+                  Tutor access required
+                </div>
+                <div style={{ fontSize: 13, color: "#6a6050", lineHeight: 1.6, marginBottom: 20, maxWidth: 300, margin: "0 auto 20px" }}>
+                  You need to complete the tutor verification before accessing the tutor dashboard.
+                </div>
+                <button
+                  onClick={handleOpenRoleSwitcher}
+                  style={{
+                    background: "rgba(232,184,75,0.1)", border: "1px solid rgba(232,184,75,0.25)",
+                    borderRadius: 10, padding: "10px 20px", fontSize: 13,
+                    color: "#e8b84b", cursor: "pointer", fontWeight: 500,
+                  }}
+                >
+                  Start verification
+                </button>
+              </motion.div>
             )}
           </AnimatePresence>
         )}

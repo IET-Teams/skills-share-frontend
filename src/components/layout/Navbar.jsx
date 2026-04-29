@@ -22,6 +22,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { useRole } from "@/context/RoleContext";
+import TutorVerificationModal from "@/components/tutor/TutorVerificationModal";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Nav items
@@ -60,7 +61,16 @@ function isActive(pathname, href) {
 // Role Toggle pill — reused in sidebar and mobile drawer
 // ─────────────────────────────────────────────────────────────────────────────
 
-function RoleToggle({ role, setRole, collapsed = false }) {
+function RoleToggle({ role, setRole, onRequestVerification, collapsed = false }) {
+  const handleSwitch = async (r) => {
+    if (r === role) return;
+    const allowed = await setRole(r);
+    if (allowed === false) {
+      // is_tutor not set — open verification flow
+      onRequestVerification?.();
+    }
+  };
+
   return (
     <div
       className="flex items-center gap-0.5 rounded-xl p-1"
@@ -72,10 +82,9 @@ function RoleToggle({ role, setRole, collapsed = false }) {
       }
     >
       {collapsed ? (
-        // Collapsed: single icon button that flips role
         <motion.button
           whileTap={{ scale: 0.9 }}
-          onClick={() => setRole(role === "student" ? "tutor" : "student")}
+          onClick={() => handleSwitch(role === "student" ? "tutor" : "student")}
           className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
           style={{ background: "rgba(232,184,75,0.1)", color: "#e8b84b" }}
         >
@@ -89,7 +98,7 @@ function RoleToggle({ role, setRole, collapsed = false }) {
         ["student", "tutor"].map((r) => (
           <button
             key={r}
-            onClick={() => setRole(r)}
+            onClick={() => handleSwitch(r)}
             className="relative flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium capitalize transition-colors"
             style={{ color: role === r ? "#0e0c0a" : "#6a6050", minWidth: 0 }}
           >
@@ -127,6 +136,7 @@ function DesktopSidebar({
   unreadCount,
   role,
   setRole,
+  onRequestVerification,
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -297,7 +307,7 @@ function DesktopSidebar({
               >
                 Role
               </p>
-              <RoleToggle role={role} setRole={setRole} collapsed={false} />
+              <RoleToggle role={role} setRole={setRole} onRequestVerification={onRequestVerification} collapsed={false} />
             </motion.div>
           ) : (
             <motion.div
@@ -308,7 +318,7 @@ function DesktopSidebar({
               transition={{ duration: 0.15 }}
               className="flex justify-center"
             >
-              <RoleToggle role={role} setRole={setRole} collapsed={true} />
+              <RoleToggle role={role} setRole={setRole} onRequestVerification={onRequestVerification} collapsed={true} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -566,6 +576,7 @@ function MobileTopBar({
   unreadCount,
   role,
   setRole,
+  onRequestVerification,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const initials = getInitials(profile?.name);
@@ -728,9 +739,8 @@ function MobileTopBar({
                 </p>
                 <RoleToggle
                   role={role}
-                  setRole={(r) => {
-                    setRole(r);
-                  }}
+                  setRole={setRole}
+                  onRequestVerification={onRequestVerification}
                   collapsed={false}
                 />
               </div>
@@ -822,11 +832,12 @@ export default function Navbar({ CURRENT_USER, children }) {
   );
   const router = useRouter();
   const pathname = usePathname();
-  const { role, setRole } = useRole();
+  const { role, setRole, refreshIsTutor } = useRole();
 
   const [profile, setProfile] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  const [verificationOpen, setVerificationOpen] = useState(false);
 
   // Detect mobile
   useEffect(() => {
@@ -922,6 +933,7 @@ export default function Navbar({ CURRENT_USER, children }) {
             unreadCount={unreadCount}
             role={role}
             setRole={setRole}
+            onRequestVerification={() => setVerificationOpen(true)}
           />
           <main className="pb-16 pt-14">{children}</main>
           <MobileBottomNav
@@ -939,6 +951,7 @@ export default function Navbar({ CURRENT_USER, children }) {
             unreadCount={unreadCount}
             role={role}
             setRole={setRole}
+            onRequestVerification={() => setVerificationOpen(true)}
           />
           <main
             className="flex-1 transition-all duration-300"
@@ -948,6 +961,15 @@ export default function Navbar({ CURRENT_USER, children }) {
           </main>
         </div>
       )}
+
+      <TutorVerificationModal
+        open={verificationOpen}
+        onClose={() => setVerificationOpen(false)}
+        onVerified={async () => {
+          await refreshIsTutor();
+          setVerificationOpen(false);
+        }}
+      />
     </div>
   );
 }
