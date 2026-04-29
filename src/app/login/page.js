@@ -6,7 +6,11 @@ import { EyeIcon, EyedropperIcon } from "@phosphor-icons/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
-import { signInWithEmail, signInWithGoogle } from "@/app/action";
+import {
+  forgotPassword,
+  signInWithEmail,
+  signInWithGoogle,
+} from "@/app/action";
 
 const features = [
   "Teach skills you know to earn campus reputation",
@@ -45,6 +49,11 @@ export default function LoginPage() {
 
   const [googleLoginActionState, googleLoginAction] =
     useActionState(signInWithGoogle);
+
+  const [resetPasswordActionState, resetPasswordAction] =
+    useActionState(forgotPassword);
+
+  console.log(resetPasswordActionState, "state of reset");
 
   // ── Google OAuth ──
   const handleGoogleLogin = async () => {
@@ -110,6 +119,8 @@ export default function LoginPage() {
     },
     exit: { opacity: 0, y: -8, transition: { duration: 0.18 } },
   };
+
+  const [forgotState, setForgotState] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#0e0c0a] grid grid-cols-1 md:grid-cols-2 font-sans">
@@ -221,6 +232,35 @@ export default function LoginPage() {
               </motion.div>
             )}
           </AnimatePresence>
+          {/* Error message */}
+          {forgotState && (
+            <AnimatePresence>
+              {resetPasswordActionState?.success && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="bg-green-500/10 border border-green-500/20 text-green-400 text-xs px-4 py-3 rounded-lg mb-4"
+                >
+                  {resetPasswordActionState?.success}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          )}
+          {forgotState && (
+            <AnimatePresence>
+              {resetPasswordActionState?.error && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs px-4 py-3 rounded-lg mb-4"
+                >
+                  {resetPasswordActionState?.error}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          )}
 
           {/* Panels */}
           <AnimatePresence mode="wait">
@@ -233,71 +273,97 @@ export default function LoginPage() {
                 exit="exit"
               >
                 <h1 className="text-xl font-medium text-[#f5f0e8] mb-1 tracking-tight">
-                  Welcome back
+                  {forgotState ? "Forgot Password" : "Welcome back"}
                 </h1>
                 <p className="text-sm text-[#6a6050] mb-6">
-                  Sign in to your SkillBridge account
+                  {forgotState
+                    ? "Enter Email to reset password"
+                    : "Sign in to your SkillBridge account"}
                 </p>
 
                 {/* Google Button */}
-                <form action={googleLoginAction}>
-                  <input
-                    type="hidden"
-                    name="next"
-                    value={searchParams.next || "/dashboard"}
-                  />
-                  <GoogleButton
-                    state={googleLoginActionState}
-                    label="Sign up with Google"
-                  />
-                </form>
+                {!forgotState && (
+                  <>
+                    <form action={googleLoginAction}>
+                      <input
+                        type="hidden"
+                        name="next"
+                        value={searchParams.next || "/dashboard"}
+                      />
+                      <GoogleButton
+                        state={googleLoginActionState}
+                        label="Sign up with Google"
+                      />
+                    </form>
+                    <Divider />
+                  </>
+                )}
 
-                <Divider />
-
-                <form
-                  // onSubmit={handleEmailLogin}
-                  action={signInWithEmail}
-                  className="flex flex-col gap-4"
-                >
-                  <FormField
-                    label="Email address"
-                    type="email"
-                    name="email"
-                    placeholder="you@college.edu"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                  />
-                  <div>
+                {forgotState ? (
+                  <form
+                    // onSubmit={handleEmailLogin}
+                    action={resetPasswordAction}
+                    className="flex flex-col gap-4"
+                  >
                     <FormField
-                      label="Password"
-                      name="password"
-                      type={showPass ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      suffix={
-                        <button
-                          type="button"
-                          onClick={() => setShowPass(!showPass)}
-                          className="text-[#4a4438] hover:text-amber-400 transition-colors"
-                        >
-                          {showPass ? (
-                            <EyedropperIcon size={15} />
-                          ) : (
-                            <EyeIcon size={15} />
-                          )}
-                        </button>
-                      }
+                      label="Email address"
+                      type="email"
+                      name="email"
+                      placeholder="you@college.edu"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
                     />
-                    <div className="text-right mt-1">
-                      <span className="text-xs text-[#6a6050] hover:text-amber-400 cursor-pointer transition-colors">
-                        Forgot password?
-                      </span>
+                    <SubmitButton loading={loading} label="Reset Password" />
+                  </form>
+                ) : (
+                  <form
+                    // onSubmit={handleEmailLogin}
+                    action={signInWithEmail}
+                    className="flex flex-col gap-4"
+                  >
+                    <FormField
+                      label="Email address"
+                      type="email"
+                      name="email"
+                      placeholder="you@college.edu"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                    />
+                    <div>
+                      <FormField
+                        label="Password"
+                        name="password"
+                        type={showPass ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        suffix={
+                          <button
+                            type="button"
+                            onClick={() => setShowPass(!showPass)}
+                            className="text-[#4a4438] hover:text-amber-400 transition-colors"
+                          >
+                            {showPass ? (
+                              <EyedropperIcon size={15} />
+                            ) : (
+                              <EyeIcon size={15} />
+                            )}
+                          </button>
+                        }
+                      />
+                      <div
+                        className="text-right mt-1"
+                        onClick={() => setForgotState(true)}
+                      >
+                        <span className="text-xs text-[#6a6050] hover:text-amber-400 cursor-pointer transition-colors">
+                          Forgot password?
+                        </span>
+                      </div>
                     </div>
-                  </div>
 
-                  <SubmitButton loading={loading} label="Sign in" />
-                </form>
+                    <SubmitButton loading={loading} label="Sign in" />
+                  </form>
+                )}
 
                 <p className="text-center text-xs text-[#6a6050] mt-4">
                   No account?{" "}
