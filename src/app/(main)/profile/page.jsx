@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+
+import StudentProfileComponent from "@/components/profile/StudentProfileComponent";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRole } from "@/context/RoleContext";
 import {
@@ -390,171 +392,7 @@ function calcStreak(sessions) {
   return count;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Skill Progress Card (student learning)
-// ─────────────────────────────────────────────────────────────────────────────
 
-function SkillProgressCard({ skill, sessCount, assessments, nextSession, index }) {
-  const router = useRouter();
-  const level = skill.proficiency_level || "Beginner";
-  const col = LEVEL_COLORS[level] || LEVEL_COLORS.Beginner;
-  const progress = LEVEL_PROGRESS[level] || 28;
-  const skillAssessments = (assessments || []).filter((a) => a.skill_name?.toLowerCase() === skill.skill_name?.toLowerCase());
-  const latestScore = skillAssessments.length > 0 ? skillAssessments[skillAssessments.length - 1].score : null;
-  const hasNoAssessment = skillAssessments.length === 0;
-  const nextDateStr = nextSession?.scheduled_at
-    ? new Date(nextSession.scheduled_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-    : null;
-
-  return (
-    <motion.div key={skill.id || index} variants={fadeUp} initial="hidden" animate="visible" custom={index} className="rounded-2xl border overflow-hidden" style={{ background: "#141210", borderColor: "#2a2520" }}>
-      <div className="p-3.5">
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="flex items-start gap-2.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ background: col.iconBg, border: `1px solid ${col.iconBorder}` }}>
-              <BookOpen size={14} style={{ color: col.text }} />
-            </div>
-            <div>
-              <p className="text-sm font-medium" style={{ color: "#f5f0e8" }}>{skill.skill_name}</p>
-              <span className="mt-1 inline-block rounded-md px-2 py-0.5 text-[9px] font-semibold tracking-wide" style={{ background: col.bg, border: `1px solid ${col.border}`, color: col.text, letterSpacing: "0.05em" }}>
-                {level.toUpperCase()}
-              </span>
-            </div>
-          </div>
-          {latestScore !== null && (
-            <div className="text-right shrink-0">
-              <p className="text-lg font-medium leading-none" style={{ color: col.text }}>{latestScore}%</p>
-              <p className="mt-1 text-[9px]" style={{ color: "#6a6050" }}>last score</p>
-            </div>
-          )}
-        </div>
-        <div className="h-1 w-full rounded-full overflow-hidden mb-1.5" style={{ background: "#2a2520" }}>
-          <motion.div className="h-full rounded-full" style={{ background: col.bar }} initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ duration: 1.0, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }} />
-        </div>
-        <p className="text-[10px]" style={{ color: "#4a4438" }}>{progress}% through {level}</p>
-      </div>
-      <div className="grid grid-cols-2" style={{ borderTop: "1px solid #1a1814" }}>
-        <div className="p-3" style={{ borderRight: "1px solid #1a1814" }}>
-          <p className="text-base font-medium" style={{ color: "#f5f0e8" }}>{sessCount}</p>
-          <p className="mt-0.5 text-[10px]" style={{ color: "#6a6050" }}>sessions done</p>
-        </div>
-        <div className="p-3">
-          {nextDateStr ? (
-            <><p className="text-xs font-medium" style={{ color: "#1d9e75" }}>{nextDateStr}</p><p className="mt-0.5 text-[10px]" style={{ color: "#6a6050" }}>next session</p></>
-          ) : (
-            <><p className="text-xs" style={{ color: "#4a4438" }}>—</p><p className="mt-0.5 text-[10px]" style={{ color: "#4a4438" }}>no upcoming</p></>
-          )}
-        </div>
-      </div>
-      {hasNoAssessment && (
-        <div className="flex items-center gap-1.5 px-3.5 py-2.5" style={{ borderTop: "1px solid #1a1814" }}>
-          <Brain size={11} style={{ color: "#e8b84b" }} />
-          <p className="text-[11px]" style={{ color: "#6a6050" }}>
-            No assessment yet —{" "}
-            <span className="cursor-pointer" style={{ color: "#e8b84b" }} onClick={() => router.push("/assessment")}>
-              take one now
-            </span>
-          </p>
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Student Learning Section
-// ─────────────────────────────────────────────────────────────────────────────
-
-function StudentLearningSection({ skills, sessions, assessments = [], isOwnProfile = true }) {
-  const learnSkills = skills.filter((s) => s.type === "learn");
-
-  if (!isOwnProfile) {
-    return (
-      <SectionCard>
-        <div className="flex items-center justify-between px-5 pt-5 pb-3">
-          <div className="flex items-center gap-2">
-            <BookOpen size={14} style={{ color: "#e8b84b" }} />
-            <span className="text-sm font-medium" style={{ color: "#f5f0e8" }}>Currently Learning</span>
-          </div>
-          <span className="text-[11px] px-2 py-0.5 rounded-md" style={{ background: "#141210", color: "#6a6050", border: "1px solid #2a2520" }}>
-            {learnSkills.length} skill{learnSkills.length !== 1 ? "s" : ""}
-          </span>
-        </div>
-        <div className="px-5 pb-5">
-          {learnSkills.length === 0 ? (
-            <EmptyState icon={BookOpen} title="No skills added" subtitle="This student hasn't added learning goals yet" />
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {learnSkills.map((skill, i) => {
-                const level = skill.proficiency_level || "Beginner";
-                const col = LEVEL_COLORS[level] || LEVEL_COLORS.Beginner;
-                return (
-                  <div key={skill.id || i} className="flex items-center gap-2 rounded-full border px-3 py-1.5" style={{ background: "#141210", borderColor: "#2a2520" }}>
-                    <span className="text-xs" style={{ color: "#f5f0e8" }}>{skill.skill_name}</span>
-                    <span className="rounded px-1.5 py-0.5 text-[9px] font-bold tracking-wider" style={{ background: col.bg, color: col.text }}>
-                      {level === "Intermediate" ? "INTER" : level.toUpperCase()}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </SectionCard>
-    );
-  }
-
-  const completedBySkill = {};
-  sessions.filter((s) => s.status === "completed").forEach((s) => {
-    const sk = s.course?.skill_name || s.course?.title;
-    if (sk) completedBySkill[sk] = (completedBySkill[sk] || 0) + 1;
-  });
-
-  const nextSessionBySkill = {};
-  sessions.filter((s) => s.status === "accepted" && s.scheduled_at && new Date(s.scheduled_at) > new Date())
-    .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))
-    .forEach((s) => {
-      const sk = s.course?.skill_name || s.course?.title;
-      if (sk && !nextSessionBySkill[sk]) nextSessionBySkill[sk] = s;
-    });
-
-  const streak = calcStreak(sessions);
-
-  return (
-    <SectionCard>
-      <div className="flex items-center justify-between px-5 pt-5 pb-3">
-        <div className="flex items-center gap-2">
-          <TrendingUp size={14} style={{ color: "#e8b84b" }} />
-          <span className="text-sm font-medium" style={{ color: "#f5f0e8" }}>Learning Progress</span>
-        </div>
-        {streak > 0 && (
-          <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1" style={{ background: "rgba(251,146,60,0.09)", border: "1px solid rgba(251,146,60,0.2)" }}>
-            <Flame size={11} style={{ color: "#fb923c" }} />
-            <span className="text-[11px] font-semibold" style={{ color: "#fb923c" }}>{streak} day streak</span>
-          </div>
-        )}
-      </div>
-      <div className="px-5 pb-5">
-        {learnSkills.length === 0 ? (
-          <EmptyState icon={BookOpen} title="No skills added yet" subtitle="Complete the setup wizard to add skills you want to learn" />
-        ) : (
-          <div className="space-y-3">
-            {learnSkills.map((skill, i) => (
-              <SkillProgressCard
-                key={skill.id || i}
-                skill={skill}
-                sessCount={completedBySkill[skill.skill_name] || 0}
-                assessments={assessments}
-                nextSession={nextSessionBySkill[skill.skill_name] || null}
-                index={i}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </SectionCard>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Assessment rank helpers
@@ -1233,7 +1071,7 @@ export default function ProfilePage() {
         {/* ── Public profile of a STUDENT ── */}
         {!isOwnProfile && profileRole === "student" && (
           <motion.div key="public-student" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="space-y-3">
-            <StudentLearningSection skills={skills} sessions={sessions} assessments={assessments} isOwnProfile={false} />
+            <StudentProfileComponent skills={skills} sessions={sessions} assessments={assessments} isOwnProfile={false} />
           </motion.div>
         )}
 
@@ -1249,7 +1087,7 @@ export default function ProfilePage() {
         {/* ── Own STUDENT profile ── */}
         {isOwnProfile && role === "student" && (
           <motion.div key="own-student" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="space-y-3">
-            <StudentLearningSection skills={skills} sessions={sessions} assessments={assessments} isOwnProfile={true} />
+            <StudentProfileComponent skills={skills} sessions={sessions} assessments={assessments} isOwnProfile={true} />
           </motion.div>
         )}
       </div>
