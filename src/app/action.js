@@ -26,6 +26,25 @@ export async function signInWithGoogle(prevState, formData) {
   }
 }
 
+export async function signInWithEmail(formData) {
+  const supabase = await createClient();
+
+  const email = formData.get("email");
+  const password = formData.get("password");
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  // ✅ session cookie is now set automatically (like Google)
+  redirect("/dashboard");
+}
+
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
