@@ -50,3 +50,49 @@ export async function signOut() {
   await supabase.auth.signOut();
   redirect("/login");
 }
+
+export async function forgotPassword(prevState, formData) {
+  const supabase = await createClient();
+
+  const email = formData.get("email");
+
+  if (!email) {
+    return { error: "Email is required" };
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/reset-password`,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { success: "Password reset email sent" };
+}
+
+export async function resetPassword(prevState, formData) {
+  const supabase = await createClient();
+
+  const password = formData.get("password");
+  const confirmPassword = formData.get("confirmPassword");
+
+  if (!password || !confirmPassword) {
+    return { error: "All fields are required" };
+  }
+
+  if (password !== confirmPassword) {
+    return { error: "Passwords do not match" };
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  // ✅ password updated, user is logged in
+  redirect("/dashboard");
+}
