@@ -366,7 +366,9 @@ export default function StudentProfileComponent({ skills = [], sessions = [], as
         levelColor = '#9c27f0'; levelBg = 'rgba(156, 39, 176, 0.2)'; levelBadge = '🟣 ADVANCED';
       }
 
-      const progress = skill.proficiency_level === 'Advanced' ? 100 : (skill.proficiency_level === 'Intermediate' ? 65 : 30);
+      const sessionsCompleted = completedSkillSessions.length;
+      const totalSessions = Math.max(sessionsCompleted + 2, 10); // Default to 10 if new, or completed + 2
+      const progress = Math.round((sessionsCompleted / totalSessions) * 100);
 
       return {
         id: skill.id,
@@ -374,8 +376,8 @@ export default function StudentProfileComponent({ skills = [], sessions = [], as
         icon: '💻', // Generic
         color: '#e8b84b',
         progress,
-        sessionsCompleted: completedSkillSessions.length,
-        totalSessions: Math.max(completedSkillSessions.length + 2, 8), // Mock total
+        sessionsCompleted,
+        totalSessions,
         nextSession: upcomingSkillSession ? new Date(upcomingSkillSession.scheduled_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : null,
         tutor: upcomingSkillSession?.tutor?.name || 'Assigned Tutor',
         levelBadge, levelColor, levelBg, latestScore
